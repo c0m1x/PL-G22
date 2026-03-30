@@ -1,0 +1,213 @@
+PL2026-projeto.md
+
+2026-03-24
+
+Construção de um Compilador para Fortran 77
+Standard
+
+Projeto de Processamento de Linguagens 2026
+
+2026-03-10 by jcr
+
+Objetivo
+
+O objetivo deste projeto é que os alunos desenvolvam um compilador para a linguagem Fortran 77
+(standard ANSI X3.9-1978).
+O compilador deverá ser capaz de analisar, interpretar e traduzir código Fortran para um formato
+intermediário e deste para código máquina ou diretamente para código máquina, neste caso da VM
+disponibilizada aos alunos.
+
+Etapas do Projeto
+
+As quarto etapas descritas abaixo devem ser implementadas para aprovação mínima no projeto (i.e., obter
+nota 10).
+
+Análise Léxica
+
+. Implementar um analisador léxico (lexer) para converter código Fortran numa lista de tokens;
+. Usar a ferramenta ply.lex, na implementação do analisador léxico;
+. Identificar palavras-chave (PROGRAM, INTEGER, REAL, LOGICAL, IF, DO, GOTO, etc.), identificadores,
+números, operadores e símbolos especiais.
+Nota: O grupo deve decidir se suportará o formato de colunas fixas do Fortran 77 ou o formato
+livre (free-form) das versões mais modernas.
+
+Análise Sintática
+
+. Construir um analisador sintático (parser) para validar a estrutura gramatical do código;
+. Usar a ferramenta ply.yacc, na implementação do analisador sintático;
+
+Análise Semântica
+
+Verificar tipos de dados, declaração de variáveis e coerência do código (e.g., validar se os labels dos
+ciclos DO correspondem aos comandos CONTINUE).
+
+Tradução de Código
+
+. Converter o código Fortran diretamente em código da máquina virtual (caso opte por não
+implementar a etapa de valorização);
+. Ou, gerar uma representação intermédia do programa reconhecido para passar à etapa de
+valorização.
+
+Otimização de Código (!valorização!)
+
+1/5
+
+PL2026-projeto.md
+
+2026-03-24
+
+. Melhorar a eficiência do código gerado, eliminando redundâncias e aplicando otimizações locais e
+globais à representação intermédia;
+. Converter a representação intermédia em código da máquina virtual.
+
+Testes
+
+. Criar uma série de testes para verificar a correção do compilador;
+. Testar programas Fortran de exemplo e validar a saída.
+
+Exemplos de Programas Fortran 77
+Exemplo 1: Olá, Mundo!
+PROGRAM HELLO
+PRINT *, 'Ola, Mundo!'
+END
+
+Exemplo 2: Fatorial
+PROGRAM FATORIAL
+INTEGER N, I, FAT
+PRINT *, 'Introduza um numero inteiro positivo:'
+READ *, N
+FAT = 1
+DO 10 I = 1, N
+FAT = FAT * I
+10 CONTINUE
+PRINT *, 'Fatorial de ', N, ': ', FAT
+END
+
+Exemplo 3: É primo?
+
+20
+
+PROGRAM PRIMO
+INTEGER NUM, I
+LOGICAL ISPRIM
+PRINT *, 'Introduza um numero inteiro positivo:'
+READ *, NUM
+ISPRIM = .TRUE.
+I = 2
+IF (I .LE. (NUM/2) .AND. ISPRIM) THEN
+IF (MOD(NUM, I) .EQ. 0) THEN
+ISPRIM = .FALSE.
+ENDIF
+I = I + 1
+GOTO 20
+2/5
+
+PL2026-projeto.md
+
+2026-03-24
+
+ENDIF
+IF (ISPRIM) THEN
+PRINT *, NUM, ' e um numero primo'
+ELSE
+PRINT *, NUM, ' nao e um numero primo'
+ENDIF
+END
+
+Exemplo 4: Soma de uma lista de inteiros
+PROGRAM SOMAARR
+INTEGER NUMS(5)
+INTEGER I, SOMA
+SOMA = 0
+PRINT *, 'Introduza 5 numeros inteiros:'
+DO 30 I = 1, 5
+READ *, NUMS(I)
+SOMA = SOMA + NUMS(I)
+30 CONTINUE
+PRINT *, 'A soma dos numeros e: ', SOMA
+END
+
+Exemplo 5: Conversão de um número decimal nas diversas bases numéricas de 2 a 9 usando uma
+função
+PROGRAM CONVERSOR
+INTEGER NUM, BASE, RESULT, CONVRT
+PRINT *, 'INTRODUZA UM NUMERO DECIMAL INTEIRO:'
+READ *, NUM
+DO 10 BASE = 2, 9
+RESULT = CONVRT(NUM, BASE)
+PRINT *, 'BASE ', BASE, ': ', RESULT
+10 CONTINUE
+END
+INTEGER FUNCTION CONVRT(N, B)
+INTEGER N, B, QUOT, REM, POT, VAL
+VAL = 0
+POT = 1
+QUOT = N
+20 IF (QUOT .GT. 0) THEN
+REM = MOD(QUOT, B)
+VAL = VAL + (REM * POT)
+QUOT = QUOT / B
+POT = POT * 10
+3/5
+
+PL2026-projeto.md
+
+2026-03-24
+
+GOTO 20
+ENDIF
+CONVRT = VAL
+RETURN
+END
+
+Requisitos Técnicos
+
+O compilador deve ser capaz de processar programas Fortran 77 standard, incluindo pelo menos:
+Declaração de tipos e variáveis;
+Expressões aritméticas, lógicas e relacionais;
+Comandos de controlo de fluxo (IF-THEN-ELSE, ciclos DO com labels, GOTO);
+Operações de Input/Output básicas (READ, PRINT).
+Para valorização da nota, devem também suportar:
+Definição e chamada de subprogramas (SUBROUTINE e FUNCTION).
+
+Registo dos Grupos
+
+Os grupos de trabalho são de 3 elementos;
+A submissão será feita via repositório GitHub;
+Cada grupo deve registar os seus membros e o URL do repositório nesta folha de cálculo partilhada;
+Nota: Não serão aceites registos de grupo nem submissões de soluções por outra via;
+O registo de grupos deve ser feito até 05/04/2026.
+
+Resultados a Entregar
+
+O prazo para a entrega do projeto é às 23 59 de 17/05/2026 (será considerado o último commit no
+repositório antes dessa hora)
+Os seguintes recursos devem estar presentes no repositório:
+. Código-fonte: O código completo do compilador implementado em Python (usando ply);
+. Relatório técnico: Documento em LaTeX ou MarkDown com o máximo de 10 páginas,
+descrevendo as opções de implementação, a gramática utilizada, as dificuldades encontradas,
+e instruções de como correr o compilador;
+. Conjunto de testes: Ficheiros de programas exemplo e os respetivos ficheiros de código em
+VM.
+As defesas do projeto decorrerão na semana de 01/06/2026 a 05/06/2026.
+
+Critérios de Avaliação
+
+Correção: O compilador processa corretamente os exemplos padrão?
+Estrutura: O código está bem organizado, modular e documentado?
+Funcionalidade: Suporta as construções essenciais da linguagem solicitadas?
+Eficiência: O código gerado para a VM é minimamente otimizado?
+4/5
+
+PL2026-projeto.md
+
+2026-03-24
+
+Defesa: Demonstração funcional e explicação das escolhas técnicas durante a apresentação.
+Nota: A nota da defesa reflete o conhecimento demonstrado por cada aluno, e não a qualidade
+intrínseca do código submetido.
+Boa sorte e bom trabalho!
+
+5/5
+
+
