@@ -103,7 +103,7 @@ Suite em `tests/` cobre:
 7. regressao de lacunas criticas
 8. subprogramas e indices dinamicos de arrays
 
-No estado atual, a suite passa integralmente: `30 passed`.
+No estado atual, a suite passa integralmente: `32 passed`.
 
 ## Historico de melhorias (alem da base 10)
 
