@@ -184,7 +184,10 @@ def _parse_stmt(line_info, line_iter):
         return None
 
     if first.type in ("INTEGER", "REAL", "LOGICAL", "CHARACTER"):
-        return _parse_decl(ts)
+        stmt = _parse_decl(ts)
+        if label is not None:
+            setattr(stmt, "stmt_label", str(label))
+        return stmt
 
     if first.type == "PRINT":
         ts.expect("PRINT")
@@ -193,7 +196,10 @@ def _parse_stmt(line_info, line_iter):
         values = [parse_expr(ts)]
         while ts.match("COMMA"):
             values.append(parse_expr(ts))
-        return PrintNode(values)
+        stmt = PrintNode(values)
+        if label is not None:
+            setattr(stmt, "stmt_label", str(label))
+        return stmt
 
     if first.type == "READ":
         ts.expect("READ")
@@ -202,20 +208,32 @@ def _parse_stmt(line_info, line_iter):
         targets = [_parse_lvalue(ts)]
         while ts.match("COMMA"):
             targets.append(_parse_lvalue(ts))
-        return ReadNode(targets)
+        stmt = ReadNode(targets)
+        if label is not None:
+            setattr(stmt, "stmt_label", str(label))
+        return stmt
 
     if first.type == "GOTO":
         ts.expect("GOTO")
         lbl = ts.expect("INT_LIT", "ID").value
-        return GotoNode(str(lbl))
+        stmt = GotoNode(str(lbl))
+        if label is not None:
+            setattr(stmt, "stmt_label", str(label))
+        return stmt
 
     if first.type == "CONTINUE":
         ts.expect("CONTINUE")
-        return ContinueNode(label)
+        stmt = ContinueNode(label)
+        if label is not None:
+            setattr(stmt, "stmt_label", str(label))
+        return stmt
 
     if first.type == "STOP":
         ts.expect("STOP")
-        return StopNode()
+        stmt = StopNode()
+        if label is not None:
+            setattr(stmt, "stmt_label", str(label))
+        return stmt
 
     if first.type == "IF":
         ts.expect("IF")
@@ -240,7 +258,10 @@ def _parse_stmt(line_info, line_iter):
             stmt = _parse_stmt(nxt, line_iter)
             if stmt is not None:
                 current.append(stmt)
-        return IfNode(cond, then_body, else_body)
+        stmt = IfNode(cond, then_body, else_body)
+        if label is not None:
+            setattr(stmt, "stmt_label", str(label))
+        return stmt
 
     if first.type == "DO":
         ts.expect("DO")
@@ -267,12 +288,18 @@ def _parse_stmt(line_info, line_iter):
             stmt = _parse_stmt(nxt, line_iter)
             if stmt is not None:
                 body.append(stmt)
-        return DoNode(expected_label, var, start, end, step, body)
+        stmt = DoNode(expected_label, var, start, end, step, body)
+        if label is not None:
+            setattr(stmt, "stmt_label", str(label))
+        return stmt
 
     target = _parse_lvalue(ts)
     ts.expect("EQUALS")
     value = parse_expr(ts)
-    return AssignNode(target, value)
+    stmt = AssignNode(target, value)
+    if label is not None:
+        setattr(stmt, "stmt_label", str(label))
+    return stmt
 
 
 def parse(token_lines):

@@ -1,4 +1,4 @@
-from ast_nodes import DeclNode
+from ast_nodes import ArrayDeclNode, DeclNode, LiteralNode
 
 
 _VM_BIN = {
@@ -19,19 +19,45 @@ _VM_BIN = {
 
 
 def _collect_vars(ast):
-    out = []
+    scalars = []
+    arrays = {}
+    cursor = 0
+
     for stmt in ast.body:
         if isinstance(stmt, DeclNode):
             for var in stmt.vars:
-                out.append(var.name)
-    # Preserve first declaration order and dedupe.
+                if isinstance(var, ArrayDeclNode):
+                    size = 1
+                    if len(var.dims) == 1 and isinstance(var.dims[0], LiteralNode):
+                        dim_val = var.dims[0].value
+                        if isinstance(dim_val, int) and dim_val > 0:
+                            size = dim_val
+                    arrays[var.name] = {"base": cursor, "size": size}
+                    cursor += size
+                else:
+                    scalars.append(var.name)
+
+    # Preserve first declaration order and dedupe for scalars.
     seen = set()
     ordered = []
-    for name in out:
+    for name in scalars:
         if name not in seen:
             ordered.append(name)
             seen.add(name)
-    return ordered
+
+    offsets = {}
+    cursor = 0
+    for name in ordered:
+        offsets[name] = cursor
+        cursor += 1
+
+    # Place arrays after scalar variables.
+    for name, info in arrays.items():
+        offsets[name] = cursor
+        info["base"] = cursor
+        cursor += info["size"]
+
+    return offsets, arrays, cursor
 
 
 def _is_number(x):
@@ -53,16 +79,31 @@ def _emit_load(lines, operand, offsets):
         lines.append(f"PUSHS '{operand}'")
 
 
+def _resolve_array_offset(arr_name, idx, arrays):
+    if arr_name not in arrays:
+        return None
+    if not isinstance(idx, int):
+        return None
+
+    base = arrays[arr_name]["base"]
+    size = arrays[arr_name]["size"]
+    pos = idx - 1  # Fortran arrays are 1-based in this MVP.
+    if pos < 0 or pos >= size:
+        return None
+    return base + pos
+
+
 def generate_vm(ir, ast):
-    vars_ = _collect_vars(ast)
-    offsets = {name: i for i, name in enumerate(vars_)}
-    lines = [f"ALLOC {len(vars_)}"]
+    offsets, arrays, mem_size = _collect_vars(ast)
+    next_free = mem_size
+    lines = [f"ALLOC {mem_size}"]
 
     # Ensure temporaries also get stack slots.
     for ins in ir:
         if isinstance(ins.result, str) and ins.result.startswith("_t") and ins.result not in offsets:
-            offsets[ins.result] = len(offsets)
-            lines[0] = f"ALLOC {len(offsets)}"
+            offsets[ins.result] = next_free
+            next_free += 1
+            lines[0] = f"ALLOC {next_free}"
 
     for ins in ir:
         op = ins.op
@@ -96,8 +137,27 @@ def generate_vm(ir, ast):
             lines.append(f"JZ {ins.result}")
         elif op == "LABEL":
             lines.append(f"{ins.result}:")
-        elif op in ("LOAD_ARR", "STORE_ARR", "READ_ARR"):
-            lines.append(f"// {op} ainda nao implementado: {ins}")
+        elif op == "LOAD_ARR":
+            elem_off = _resolve_array_offset(ins.arg1, ins.arg2, arrays)
+            if elem_off is None:
+                lines.append(f"// INSTR NAO SUPORTADA: {ins}")
+                continue
+            lines.append(f"LOAD {elem_off}")
+            lines.append(f"STORE {offsets[ins.result]}")
+        elif op == "STORE_ARR":
+            elem_off = _resolve_array_offset(ins.result, ins.arg1, arrays)
+            if elem_off is None:
+                lines.append(f"// INSTR NAO SUPORTADA: {ins}")
+                continue
+            _emit_load(lines, ins.arg2, offsets)
+            lines.append(f"STORE {elem_off}")
+        elif op == "READ_ARR":
+            elem_off = _resolve_array_offset(ins.result, ins.arg1, arrays)
+            if elem_off is None:
+                lines.append(f"// INSTR NAO SUPORTADA: {ins}")
+                continue
+            lines.append("READ")
+            lines.append(f"STORE {elem_off}")
         else:
             lines.append(f"// INSTR NAO SUPORTADA: {ins}")
 

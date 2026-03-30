@@ -4,6 +4,8 @@ from ast_nodes import (
     AssignNode,
     BinOpNode,
     DeclNode,
+    DoNode,
+    GotoNode,
     IdentifierNode,
     IfNode,
     LiteralNode,
@@ -20,15 +22,31 @@ class SemanticAnalyzer:
         self.symtable = SymbolTable()
         self.errors: list[str] = []
         self.current_scope = "GLOBAL"
+        self.labels: set[str] = set()
 
     def analyze(self, program: ProgramNode):
         self.current_scope = program.name
         self.symtable.create_scope(program.name)
+        self.labels = self._collect_labels(program.body)
         for stmt in program.body:
             self.visit(stmt)
         if self.errors:
             raise ValueError("\n".join(self.errors))
         return self.symtable
+
+    def _collect_labels(self, stmts):
+        labels: set[str] = set()
+        for stmt in stmts:
+            lbl = getattr(stmt, "stmt_label", None)
+            if lbl is not None:
+                labels.add(str(lbl))
+            if isinstance(stmt, IfNode):
+                labels.update(self._collect_labels(stmt.then_body))
+                labels.update(self._collect_labels(stmt.else_body))
+            elif isinstance(stmt, DoNode):
+                labels.add(str(stmt.label))
+                labels.update(self._collect_labels(stmt.body))
+        return labels
 
     def visit(self, node):
         meth = getattr(self, f"visit_{node.__class__.__name__}", None)
@@ -120,6 +138,20 @@ class SemanticAnalyzer:
             self.visit(stmt)
         for stmt in node.else_body:
             self.visit(stmt)
+
+    def visit_DoNode(self, node: DoNode):
+        # Loop control variable must be declared and integer-like.
+        self._lookup(node.var)
+        self.visit(node.start)
+        self.visit(node.end)
+        if node.step is not None:
+            self.visit(node.step)
+        for stmt in node.body:
+            self.visit(stmt)
+
+    def visit_GotoNode(self, node: GotoNode):
+        if str(node.label) not in self.labels:
+            self.errors.append(f"GOTO para label inexistente: {node.label}")
 
     def visit_ProgramNode(self, node: ProgramNode):
         self.analyze(node)
