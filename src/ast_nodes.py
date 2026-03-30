@@ -6,6 +6,7 @@ from typing import Any
 class ProgramNode:
     name: str
     body: list[Any]
+    subprograms: list[Any] = field(default_factory=list)
 
 
 @dataclass
@@ -34,6 +35,12 @@ class IdentifierNode:
 class ArrayRefNode:
     name: str
     indices: list[Any]
+
+
+@dataclass
+class FuncCallNode:
+    name: str
+    args: list[Any]
 
 
 @dataclass
@@ -72,6 +79,12 @@ class ReadNode:
 
 
 @dataclass
+class CallNode:
+    name: str
+    args: list[Any]
+
+
+@dataclass
 class IfNode:
     condition: Any
     then_body: list[Any]
@@ -101,3 +114,23 @@ class ContinueNode:
 @dataclass
 class StopNode:
     pass
+
+
+@dataclass
+class ReturnNode:
+    pass
+
+
+@dataclass
+class FunctionDefNode:
+    return_type: str
+    name: str
+    params: list[str]
+    body: list[Any]
+
+
+@dataclass
+class SubroutineDefNode:
+    name: str
+    params: list[str]
+    body: list[Any]
