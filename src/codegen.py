@@ -7,6 +7,7 @@ _VM_BIN = {
     "MUL": "MUL",
     "DIV": "DIV",
     "POW": "POW",
+    "MOD": "MOD",
     "EQ": "EQ",
     "NE": "NE",
     "LT": "LT",

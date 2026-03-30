@@ -7,6 +7,7 @@ _FOLD_BIN = {
     "MUL": lambda a, b: a * b,
     "DIV": lambda a, b: a / b,
     "POW": lambda a, b: a ** b,
+    "MOD": lambda a, b: a % b,
 }
 
 
@@ -76,6 +77,7 @@ def dead_temp_elimination(instrs: list[TACInstr]) -> list[TACInstr]:
                 "MUL",
                 "DIV",
                 "POW",
+                "MOD",
                 "EQ",
                 "NE",
                 "LT",

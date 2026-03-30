@@ -121,6 +121,18 @@ class SemanticAnalyzer:
     def visit_DeclNode(self, node: DeclNode):
         for var in node.vars:
             try:
+                # Fortran allows typing external function names in program scope
+                # (e.g., INTEGER CONVRT with INTEGER FUNCTION CONVRT).
+                if not isinstance(var, ArrayDeclNode):
+                    existing = self.symtable.lookup(self.current_scope, var.name)
+                    if (
+                        existing is not None
+                        and existing.get("kind") == "function"
+                        and existing.get("type") == node.type_name
+                        and self.current_scope == self.global_scope
+                    ):
+                        continue
+
                 if isinstance(var, ArrayDeclNode):
                     dims = self._extract_array_dims(var)
                     self.symtable.declare(
@@ -263,6 +275,22 @@ class SemanticAnalyzer:
             self.errors.append(f"GOTO para label inexistente: {node.label}")
 
     def visit_FuncCallNode(self, node: FuncCallNode):
+        if node.name == "MOD":
+            if len(node.args) != 2:
+                self.errors.append(
+                    f"Numero de argumentos incompativel em FUNCTION MOD: esperado 2, obtido {len(node.args)}"
+                )
+                for arg in node.args:
+                    self.visit(arg)
+                return "UNKNOWN"
+
+            arg_types = [self.visit(node.args[0]), self.visit(node.args[1])]
+            for at in arg_types:
+                if at not in ("INTEGER", "UNKNOWN"):
+                    self.errors.append("FUNCTION MOD exige argumentos INTEGER")
+                    break
+            return "INTEGER"
+
         sym = self.symtable.lookup(self.global_scope, node.name)
         if sym is None or sym.get("kind") != "function":
             self.errors.append(f"FUNCTION nao declarada: {node.name}")

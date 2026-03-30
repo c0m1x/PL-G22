@@ -35,6 +35,7 @@ _BIN_OP_MAP = {
     "GE": "GE",
     "AND": "AND",
     "OR": "OR",
+    "MOD": "MOD",
 }
 
 
@@ -237,6 +238,17 @@ class IRGen:
             self.visit(stmt)
 
     def visit_FuncCallNode(self, node: FuncCallNode):
+        if node.name == "MOD":
+            if len(node.args) != 2:
+                t = self.new_temp()
+                self.emit("COPY", t, 0)
+                return t
+            left = self.visit(node.args[0])
+            right = self.visit(node.args[1])
+            t = self.new_temp()
+            self.emit("MOD", t, left, right)
+            return t
+
         if node.name not in self.functions:
             # Semantic should reject this earlier; preserve pipeline with a neutral value.
             t = self.new_temp()

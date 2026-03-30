@@ -40,6 +40,7 @@ precedence = (
 )
 
 _CURRENT_FUNCTION_NAMES: set[str] = set()
+_INTRINSIC_FUNCTION_NAMES = {"MOD"}
 
 
 class _ListTokenLexer:
@@ -115,7 +116,7 @@ def p_expr_id(p):
 
 def p_expr_ref_or_call(p):
     "expr : ID LPAREN expr_list RPAREN"
-    if p[1] in _CURRENT_FUNCTION_NAMES:
+    if p[1] in _CURRENT_FUNCTION_NAMES or p[1] in _INTRINSIC_FUNCTION_NAMES:
         p[0] = FuncCallNode(p[1], p[3])
     else:
         p[0] = ArrayRefNode(p[1], p[3])
