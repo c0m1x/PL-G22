@@ -10,6 +10,7 @@ from ast_nodes import (
     LiteralNode,
     PrintNode,
     ReadNode,
+    StopNode,
     UnaryOpNode,
 )
 from ir import TACInstr
@@ -52,6 +53,9 @@ class IRGen:
         self.instrs.append(TACInstr(op, result, arg1, arg2))
 
     def visit(self, node):
+        stmt_label = getattr(node, "stmt_label", None)
+        if stmt_label is not None:
+            self.emit("LABEL", str(stmt_label))
         meth = getattr(self, f"visit_{node.__class__.__name__}", None)
         if meth is None:
             return None
@@ -67,9 +71,9 @@ class IRGen:
         return node.name
 
     def visit_ArrayRefNode(self, node: ArrayRefNode):
-        idx_val = self.visit(node.indices[0])
+        idx_vals = [self.visit(idx) for idx in node.indices]
         t = self.new_temp()
-        self.emit("LOAD_ARR", t, node.name, idx_val)
+        self.emit("LOAD_ARR", t, node.name, idx_vals)
         return t
 
     def visit_UnaryOpNode(self, node: UnaryOpNode):
@@ -96,8 +100,8 @@ class IRGen:
         if isinstance(node.target, IdentifierNode):
             self.emit("COPY", node.target.name, src)
         else:
-            idx = self.visit(node.target.indices[0])
-            self.emit("STORE_ARR", node.target.name, idx, src)
+            idx_vals = [self.visit(idx) for idx in node.target.indices]
+            self.emit("STORE_ARR", node.target.name, idx_vals, src)
 
     def visit_PrintNode(self, node: PrintNode):
         for value in node.values:
@@ -109,8 +113,8 @@ class IRGen:
             if isinstance(target, IdentifierNode):
                 self.emit("READ", target.name)
             elif isinstance(target, ArrayRefNode):
-                idx = self.visit(target.indices[0])
-                self.emit("READ_ARR", target.name, idx)
+                idx_vals = [self.visit(idx) for idx in target.indices]
+                self.emit("READ_ARR", target.name, idx_vals)
 
     def visit_GotoNode(self, node: GotoNode):
         self.emit("JMP", node.label)
@@ -144,6 +148,9 @@ class IRGen:
         for stmt in node.else_body:
             self.visit(stmt)
         self.emit("LABEL", end_lbl)
+
+    def visit_StopNode(self, node: StopNode):
+        self.emit("HALT")
 
 
 def generate_ir(ast):

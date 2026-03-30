@@ -71,6 +71,24 @@ t_LE = r"\.LE\."
 t_GT = r"\.GT\."
 t_GE = r"\.GE\."
 
+
+def t_AND(t):
+    r"\.AND\."
+    t.value = "AND"
+    return t
+
+
+def t_OR(t):
+    r"\.OR\."
+    t.value = "OR"
+    return t
+
+
+def t_NOT(t):
+    r"\.NOT\."
+    t.value = "NOT"
+    return t
+
 t_ignore = " \t\r"
 
 

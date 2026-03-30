@@ -58,10 +58,11 @@ class SemanticAnalyzer:
         for var in node.vars:
             try:
                 if isinstance(var, ArrayDeclNode):
+                    dims = self._extract_array_dims(var)
                     self.symtable.declare(
                         self.current_scope,
                         var.name,
-                        {"kind": "array", "type": node.type_name, "dims": var.dims},
+                        {"kind": "array", "type": node.type_name, "dims": dims or []},
                     )
                 else:
                     self.symtable.declare(
@@ -80,11 +81,25 @@ class SemanticAnalyzer:
         return sym
 
     def _type_compatible(self, ltype: str, rtype: str):
+        if ltype == "UNKNOWN" or rtype == "UNKNOWN":
+            return True
         if ltype == rtype:
             return True
         if ltype == "REAL" and rtype == "INTEGER":
             return True
         return False
+
+    def _extract_array_dims(self, node: ArrayDeclNode):
+        dims: list[int] = []
+        for dim_expr in node.dims:
+            if not isinstance(dim_expr, LiteralNode) or dim_expr.type_name != "INTEGER":
+                self.errors.append(f"Dimensao de array deve ser literal INTEGER em {node.name}")
+                return None
+            if dim_expr.value <= 0:
+                self.errors.append(f"Dimensao de array deve ser > 0 em {node.name}")
+                return None
+            dims.append(dim_expr.value)
+        return dims
 
     def visit_AssignNode(self, node: AssignNode):
         ltype = self.visit(node.target)
@@ -98,10 +113,26 @@ class SemanticAnalyzer:
 
     def visit_ArrayRefNode(self, node: ArrayRefNode):
         sym = self._lookup(node.name)
-        for idx in node.indices:
+        if sym.get("kind") != "array":
+            self.errors.append(f"Identificador nao e array: {node.name}")
+            return sym["type"]
+
+        dims = sym.get("dims", [])
+        if dims and len(node.indices) != len(dims):
+            self.errors.append(
+                f"Numero de indices incompativel para {node.name}: esperado {len(dims)}, obtido {len(node.indices)}"
+            )
+
+        for i, idx in enumerate(node.indices):
             itype = self.visit(idx)
             if itype != "INTEGER":
                 self.errors.append(f"Indice de array deve ser INTEGER em {node.name}")
+                continue
+            if isinstance(idx, LiteralNode) and dims and i < len(dims):
+                if idx.value < 1 or idx.value > dims[i]:
+                    self.errors.append(
+                        f"Indice fora dos limites em {node.name}: {idx.value} nao esta em 1..{dims[i]}"
+                    )
         return sym["type"]
 
     def visit_LiteralNode(self, node: LiteralNode):
@@ -110,13 +141,19 @@ class SemanticAnalyzer:
     def visit_UnaryOpNode(self, node: UnaryOpNode):
         t = self.visit(node.operand)
         if node.op == "NOT":
+            if t not in ("LOGICAL", "UNKNOWN"):
+                self.errors.append("Operador NOT exige operando LOGICAL")
             return "LOGICAL"
         return t
 
     def visit_BinOpNode(self, node: BinOpNode):
         lt = self.visit(node.left)
         rt = self.visit(node.right)
-        if node.op in ("EQ", "NE", "LT", "LE", "GT", "GE", "AND", "OR"):
+        if node.op in ("AND", "OR"):
+            if lt not in ("LOGICAL", "UNKNOWN") or rt not in ("LOGICAL", "UNKNOWN"):
+                self.errors.append(f"Operador {node.op} exige operandos LOGICAL")
+            return "LOGICAL"
+        if node.op in ("EQ", "NE", "LT", "LE", "GT", "GE"):
             return "LOGICAL"
         if lt == "REAL" or rt == "REAL":
             return "REAL"
@@ -141,11 +178,17 @@ class SemanticAnalyzer:
 
     def visit_DoNode(self, node: DoNode):
         # Loop control variable must be declared and integer-like.
-        self._lookup(node.var)
-        self.visit(node.start)
-        self.visit(node.end)
+        var_sym = self._lookup(node.var)
+        if var_sym.get("type") not in ("INTEGER", "UNKNOWN"):
+            self.errors.append("Variavel de controlo do DO deve ser INTEGER")
+        start_t = self.visit(node.start)
+        end_t = self.visit(node.end)
+        if start_t not in ("INTEGER", "UNKNOWN") or end_t not in ("INTEGER", "UNKNOWN"):
+            self.errors.append("Limites do DO devem ser INTEGER")
         if node.step is not None:
-            self.visit(node.step)
+            step_t = self.visit(node.step)
+            if step_t not in ("INTEGER", "UNKNOWN"):
+                self.errors.append("STEP do DO deve ser INTEGER")
         for stmt in node.body:
             self.visit(stmt)
 

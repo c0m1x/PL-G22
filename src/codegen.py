@@ -27,12 +27,16 @@ def _collect_vars(ast):
         if isinstance(stmt, DeclNode):
             for var in stmt.vars:
                 if isinstance(var, ArrayDeclNode):
+                    dims = []
+                    for d in var.dims:
+                        if isinstance(d, LiteralNode) and isinstance(d.value, int) and d.value > 0:
+                            dims.append(d.value)
+                        else:
+                            dims.append(1)
                     size = 1
-                    if len(var.dims) == 1 and isinstance(var.dims[0], LiteralNode):
-                        dim_val = var.dims[0].value
-                        if isinstance(dim_val, int) and dim_val > 0:
-                            size = dim_val
-                    arrays[var.name] = {"base": cursor, "size": size}
+                    for dim in dims:
+                        size *= dim
+                    arrays[var.name] = {"base": cursor, "size": size, "dims": dims}
                     cursor += size
                 else:
                     scalars.append(var.name)
@@ -82,15 +86,28 @@ def _emit_load(lines, operand, offsets):
 def _resolve_array_offset(arr_name, idx, arrays):
     if arr_name not in arrays:
         return None
-    if not isinstance(idx, int):
+    dims = arrays[arr_name].get("dims", [])
+    idx_list = idx if isinstance(idx, list) else [idx]
+    if not all(isinstance(v, int) for v in idx_list):
+        return None
+    if dims and len(idx_list) != len(dims):
         return None
 
     base = arrays[arr_name]["base"]
-    size = arrays[arr_name]["size"]
-    pos = idx - 1  # Fortran arrays are 1-based in this MVP.
-    if pos < 0 or pos >= size:
-        return None
-    return base + pos
+    if not dims:
+        dims = [arrays[arr_name]["size"]]
+
+    # Row-major linearization for MVP layout in VM memory.
+    linear = 0
+    for axis, dim in enumerate(dims):
+        pos = idx_list[axis] - 1  # Fortran source indexing is 1-based.
+        if pos < 0 or pos >= dim:
+            return None
+        stride = 1
+        for rem in dims[axis + 1 :]:
+            stride *= rem
+        linear += pos * stride
+    return base + linear
 
 
 def generate_vm(ir, ast):
@@ -158,6 +175,8 @@ def generate_vm(ir, ast):
                 continue
             lines.append("READ")
             lines.append(f"STORE {elem_off}")
+        elif op == "HALT":
+            lines.append("HALT")
         else:
             lines.append(f"// INSTR NAO SUPORTADA: {ins}")
 
