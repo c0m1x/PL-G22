@@ -3,8 +3,11 @@ from ast_nodes import (
     ArrayRefNode,
     AssignNode,
     BinOpNode,
+    CallNode,
     DeclNode,
     DoNode,
+    FuncCallNode,
+    FunctionDefNode,
     GotoNode,
     IdentifierNode,
     IfNode,
@@ -12,6 +15,8 @@ from ast_nodes import (
     PrintNode,
     ProgramNode,
     ReadNode,
+    ReturnNode,
+    SubroutineDefNode,
     UnaryOpNode,
 )
 from symbol_table import SymbolTable
@@ -22,17 +27,76 @@ class SemanticAnalyzer:
         self.symtable = SymbolTable()
         self.errors: list[str] = []
         self.current_scope = "GLOBAL"
+        self.global_scope = "GLOBAL"
         self.labels: set[str] = set()
 
     def analyze(self, program: ProgramNode):
         self.current_scope = program.name
+        self.global_scope = program.name
         self.symtable.create_scope(program.name)
+
+        # Declare subprogram signatures in global scope before body checks.
+        for sub in program.subprograms:
+            try:
+                if isinstance(sub, FunctionDefNode):
+                    self.symtable.declare(
+                        self.global_scope,
+                        sub.name,
+                        {
+                            "kind": "function",
+                            "type": sub.return_type,
+                            "params": list(sub.params),
+                        },
+                    )
+                elif isinstance(sub, SubroutineDefNode):
+                    self.symtable.declare(
+                        self.global_scope,
+                        sub.name,
+                        {
+                            "kind": "subroutine",
+                            "type": "VOID",
+                            "params": list(sub.params),
+                        },
+                    )
+            except ValueError as err:
+                self.errors.append(str(err))
+
         self.labels = self._collect_labels(program.body)
         for stmt in program.body:
             self.visit(stmt)
+
+        # Analyze each external subprogram in its own scope.
+        for sub in program.subprograms:
+            self._analyze_subprogram(sub)
+
         if self.errors:
             raise ValueError("\n".join(self.errors))
         return self.symtable
+
+    def _analyze_subprogram(self, sub):
+        prev_scope = self.current_scope
+        prev_labels = self.labels
+        sub_scope = f"{self.global_scope}::{sub.name}"
+        self.current_scope = sub_scope
+        self.symtable.create_scope(sub_scope)
+
+        # FUNCTION return value is assigned via symbol with same name.
+        if isinstance(sub, FunctionDefNode):
+            try:
+                self.symtable.declare(
+                    sub_scope,
+                    sub.name,
+                    {"kind": "var", "type": sub.return_type},
+                )
+            except ValueError as err:
+                self.errors.append(str(err))
+
+        self.labels = self._collect_labels(sub.body)
+        for stmt in sub.body:
+            self.visit(stmt)
+
+        self.current_scope = prev_scope
+        self.labels = prev_labels
 
     def _collect_labels(self, stmts):
         labels: set[str] = set()
@@ -75,6 +139,8 @@ class SemanticAnalyzer:
 
     def _lookup(self, name: str):
         sym = self.symtable.lookup(self.current_scope, name)
+        if sym is None and self.current_scope != self.global_scope:
+            sym = self.symtable.lookup(self.global_scope, name)
         if sym is None:
             self.errors.append(f"Identificador nao declarado: {name}")
             return {"kind": "var", "type": "UNKNOWN"}
@@ -195,6 +261,44 @@ class SemanticAnalyzer:
     def visit_GotoNode(self, node: GotoNode):
         if str(node.label) not in self.labels:
             self.errors.append(f"GOTO para label inexistente: {node.label}")
+
+    def visit_FuncCallNode(self, node: FuncCallNode):
+        sym = self.symtable.lookup(self.global_scope, node.name)
+        if sym is None or sym.get("kind") != "function":
+            self.errors.append(f"FUNCTION nao declarada: {node.name}")
+            for arg in node.args:
+                self.visit(arg)
+            return "UNKNOWN"
+
+        expected = sym.get("params", [])
+        if len(node.args) != len(expected):
+            self.errors.append(
+                f"Numero de argumentos incompativel em FUNCTION {node.name}: esperado {len(expected)}, obtido {len(node.args)}"
+            )
+
+        for arg in node.args:
+            self.visit(arg)
+        return sym.get("type", "UNKNOWN")
+
+    def visit_CallNode(self, node: CallNode):
+        sym = self.symtable.lookup(self.global_scope, node.name)
+        if sym is None or sym.get("kind") != "subroutine":
+            self.errors.append(f"SUBROUTINE nao declarada: {node.name}")
+            for arg in node.args:
+                self.visit(arg)
+            return
+
+        expected = sym.get("params", [])
+        if len(node.args) != len(expected):
+            self.errors.append(
+                f"Numero de argumentos incompativel em SUBROUTINE {node.name}: esperado {len(expected)}, obtido {len(node.args)}"
+            )
+
+        for arg in node.args:
+            self.visit(arg)
+
+    def visit_ReturnNode(self, node: ReturnNode):
+        return None
 
     def visit_ProgramNode(self, node: ProgramNode):
         self.analyze(node)
