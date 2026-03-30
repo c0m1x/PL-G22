@@ -45,11 +45,15 @@ Atualmente o compilador suporta:
 
 ## O que ainda falta (proposta completa)
 
-- Arrays completos (indexacao multi-dimensional e codegen de `LOAD_ARR/STORE_ARR`)
 - Subprogramas (`FUNCTION`, `SUBROUTINE`, `CALL`, parametros)
-- Otimizacoes adicionais (copy propagation, DCE, peephole)
-- Suite de testes `pytest` com casos do enunciado e edge cases
 - Integracao com VM externa para testes end-to-end
+
+## Ja implementado nesta iteracao
+
+- Arrays com indexacao multi-dimensional (semantica, IR e codegen para indices literais)
+- Otimizacoes TAC adicionais (`constant folding`, `copy propagation`, `DCE`, `peephole`)
+- Suite de testes `pytest` expandida com casos de linguagem e edge cases
+- Workflow CI em GitHub Actions para execucao automatica de testes
 
 ## Proximos passos sugeridos
 
@@ -57,3 +61,18 @@ Atualmente o compilador suporta:
 2. Adicionar subprogramas e chamadas
 3. Expandir otimizacoes TAC
 4. Criar bateria de testes automatica
+
+## Workflow de desenvolvimento e validacao
+
+Fluxo recomendado para garantir regressao zero durante evolucao do compilador:
+
+1. Implementar/ajustar funcionalidade em `src/`
+2. Adicionar ou atualizar testes em `tests/`
+3. Executar localmente:
+
+```bash
+pytest -q
+```
+
+4. Abrir `push`/`pull request`; o workflow CI em `.github/workflows/tests.yml`
+	executa automaticamente a suite `pytest`
