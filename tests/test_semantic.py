@@ -49,3 +49,28 @@ def test_semantic_requires_logical_if_condition():
 
     with pytest.raises(ValueError, match="Condicao de IF deve ser LOGICAL"):
         _analyze(source)
+
+
+def test_semantic_rejects_non_logical_not_operand():
+    source = (
+        "      PROGRAM T\n"
+        "      INTEGER X\n"
+        "      X = .NOT. 1\n"
+        "      END\n"
+    )
+
+    with pytest.raises(ValueError, match="Operador NOT exige operando LOGICAL"):
+        _analyze(source)
+
+
+def test_semantic_rejects_non_logical_and_operands():
+    source = (
+        "      PROGRAM T\n"
+        "      INTEGER X\n"
+        "      LOGICAL L\n"
+        "      L = X .AND. .TRUE.\n"
+        "      END\n"
+    )
+
+    with pytest.raises(ValueError, match="Operador AND exige operandos LOGICAL"):
+        _analyze(source)
