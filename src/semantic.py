@@ -38,6 +38,7 @@ class SemanticAnalyzer:
         # Declare subprogram signatures in global scope before body checks.
         for sub in program.subprograms:
             try:
+                param_types, param_kinds = self._infer_subprogram_param_metadata(sub)
                 if isinstance(sub, FunctionDefNode):
                     self.symtable.declare(
                         self.global_scope,
@@ -46,6 +47,8 @@ class SemanticAnalyzer:
                             "kind": "function",
                             "type": sub.return_type,
                             "params": list(sub.params),
+                            "param_types": param_types,
+                            "param_kinds": param_kinds,
                         },
                     )
                 elif isinstance(sub, SubroutineDefNode):
@@ -56,6 +59,8 @@ class SemanticAnalyzer:
                             "kind": "subroutine",
                             "type": "VOID",
                             "params": list(sub.params),
+                            "param_types": param_types,
+                            "param_kinds": param_kinds,
                         },
                     )
             except ValueError as err:
@@ -111,6 +116,25 @@ class SemanticAnalyzer:
                 labels.add(str(stmt.label))
                 labels.update(self._collect_labels(stmt.body))
         return labels
+
+    def _infer_subprogram_param_metadata(self, sub):
+        declared: dict[str, tuple[str, str]] = {}
+        for stmt in sub.body:
+            if not isinstance(stmt, DeclNode):
+                continue
+            for var in stmt.vars:
+                if isinstance(var, ArrayDeclNode):
+                    declared[var.name] = (stmt.type_name, "array")
+                else:
+                    declared[var.name] = (stmt.type_name, "var")
+
+        param_types: list[str] = []
+        param_kinds: list[str] = []
+        for param in sub.params:
+            p_type, p_kind = declared.get(param, ("UNKNOWN", "var"))
+            param_types.append(p_type)
+            param_kinds.append(p_kind)
+        return param_types, param_kinds
 
     def visit(self, node):
         meth = getattr(self, f"visit_{node.__class__.__name__}", None)
@@ -272,6 +296,35 @@ class SemanticAnalyzer:
         if str(node.label) not in self.labels:
             self.errors.append(f"GOTO para label inexistente: {node.label}")
 
+    def _validate_call_argument_metadata(self, node_name: str, node_args, expected_types, expected_kinds, callee_kind):
+        for idx, arg in enumerate(node_args):
+            arg_type = self.visit(arg)
+
+            if idx >= len(expected_types):
+                continue
+
+            expected_type = expected_types[idx]
+            expected_kind = expected_kinds[idx] if idx < len(expected_kinds) else "var"
+
+            if expected_kind == "array":
+                if not isinstance(arg, IdentifierNode):
+                    self.errors.append(
+                        f"Argumento {idx + 1} de {callee_kind} {node_name} deve ser array"
+                    )
+                    continue
+                arg_sym = self._lookup(arg.name)
+                if arg_sym.get("kind") != "array":
+                    self.errors.append(
+                        f"Argumento {idx + 1} de {callee_kind} {node_name} deve ser array"
+                    )
+                    continue
+
+            if expected_type != "UNKNOWN" and not self._type_compatible(expected_type, arg_type):
+                self.errors.append(
+                    f"Tipo de argumento incompativel em {callee_kind} {node_name}: "
+                    f"arg {idx + 1} esperado {expected_type}, obtido {arg_type}"
+                )
+
     def visit_FuncCallNode(self, node: FuncCallNode):
         if node.name == "MOD":
             if len(node.args) != 2:
@@ -302,8 +355,13 @@ class SemanticAnalyzer:
                 f"Numero de argumentos incompativel em FUNCTION {node.name}: esperado {len(expected)}, obtido {len(node.args)}"
             )
 
-        for arg in node.args:
-            self.visit(arg)
+        self._validate_call_argument_metadata(
+            node.name,
+            node.args,
+            sym.get("param_types", []),
+            sym.get("param_kinds", []),
+            "FUNCTION",
+        )
         return sym.get("type", "UNKNOWN")
 
     def visit_CallNode(self, node: CallNode):
@@ -320,8 +378,13 @@ class SemanticAnalyzer:
                 f"Numero de argumentos incompativel em SUBROUTINE {node.name}: esperado {len(expected)}, obtido {len(node.args)}"
             )
 
-        for arg in node.args:
-            self.visit(arg)
+        self._validate_call_argument_metadata(
+            node.name,
+            node.args,
+            sym.get("param_types", []),
+            sym.get("param_kinds", []),
+            "SUBROUTINE",
+        )
 
     def visit_ReturnNode(self, node: ReturnNode):
         return None
