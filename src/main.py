@@ -32,6 +32,7 @@ def main():
 
     if args.repl:
         from repl import run_repl
+
         run_repl()
         return
 
@@ -60,6 +61,7 @@ def main():
     if args.visualize:
         try:
             from visualizer import visualize
+
             path = visualize(ast, output=args.visualize)
             print(f"AST gerada: {path}", file=sys.stderr)
         except ImportError:
@@ -71,6 +73,7 @@ def main():
     if args.run:
         try:
             from ewvm import run_code
+
             output = run_code("\n".join(vm), args.run_input)
             print(output)
         except ImportError:

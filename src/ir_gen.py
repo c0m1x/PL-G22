@@ -20,7 +20,6 @@ from ast_nodes import (
 )
 from ir import TACInstr
 
-
 _BIN_OP_MAP = {
     "PLUS": "ADD",
     "MINUS": "SUB",

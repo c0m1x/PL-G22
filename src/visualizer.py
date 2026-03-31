@@ -164,9 +164,19 @@ class _ASTVisualizer:
 
     def _visit_BinOpNode(self, node: BinOpNode) -> str:
         op_map = {
-            "PLUS": "+", "MINUS": "-", "STAR": "*", "SLASH": "/", "DSTAR": "**",
-            "EQ": ".EQ.", "NE": ".NE.", "LT": ".LT.", "LE": ".LE.", "GT": ".GT.", "GE": ".GE.",
-            "AND": ".AND.", "OR": ".OR.",
+            "PLUS": "+",
+            "MINUS": "-",
+            "STAR": "*",
+            "SLASH": "/",
+            "DSTAR": "**",
+            "EQ": ".EQ.",
+            "NE": ".NE.",
+            "LT": ".LT.",
+            "LE": ".LE.",
+            "GT": ".GT.",
+            "GE": ".GE.",
+            "AND": ".AND.",
+            "OR": ".OR.",
         }
         op = op_map.get(node.op, node.op)
         nid = self._node(op, "#dce8f7")
