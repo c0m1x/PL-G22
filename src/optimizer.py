@@ -1,12 +1,11 @@
 from ir import TACInstr
 
-
 _FOLD_BIN = {
     "ADD": lambda a, b: a + b,
     "SUB": lambda a, b: a - b,
     "MUL": lambda a, b: a * b,
     "DIV": lambda a, b: a / b,
-    "POW": lambda a, b: a ** b,
+    "POW": lambda a, b: a**b,
     "MOD": lambda a, b: a % b,
 }
 
