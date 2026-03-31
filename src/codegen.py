@@ -1,13 +1,12 @@
 from ast_nodes import ArrayDeclNode, DeclNode, LiteralNode
 
-
 _VM_CMP = {
-    "EQ":  ["EQUAL"],
-    "NE":  ["EQUAL", "NOT"],
-    "LT":  ["INF"],
-    "LE":  ["INFEQ"],
-    "GT":  ["SUP"],
-    "GE":  ["SUPEQ"],
+    "EQ": ["EQUAL"],
+    "NE": ["EQUAL", "NOT"],
+    "LT": ["INF"],
+    "LE": ["INFEQ"],
+    "GT": ["SUP"],
+    "GE": ["SUPEQ"],
 }
 
 _VM_BIN = {
@@ -17,7 +16,7 @@ _VM_BIN = {
     "DIV": "DIV",
     "MOD": "MOD",
     "AND": "AND",
-    "OR":  "OR",
+    "OR": "OR",
 }
 
 
@@ -125,7 +124,7 @@ def _resolve_array_offset(arr_name, idx, arrays):
         if pos < 0 or pos >= dim:
             return None
         stride = 1
-        for rem in dims[axis + 1:]:
+        for rem in dims[axis + 1 :]:
             stride *= rem
         linear += pos * stride
     return base + linear
@@ -139,7 +138,7 @@ def _emit_runtime_linear_index(lines, idx_list, dims, offsets, ensure_offset):
         lines.append("PUSHI 1")
         lines.append("SUB")
         stride = 1
-        for rem in dims[axis + 1:]:
+        for rem in dims[axis + 1 :]:
             stride *= rem
         if stride != 1:
             lines.append(f"PUSHI {stride}")

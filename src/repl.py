@@ -19,6 +19,7 @@ from enum import Enum
 try:
     from prompt_toolkit import PromptSession, print_formatted_text, ANSI
     from prompt_toolkit.patch_stdout import patch_stdout
+
     _HAS_PROMPT_TOOLKIT = True
 except ImportError:
     _HAS_PROMPT_TOOLKIT = False
