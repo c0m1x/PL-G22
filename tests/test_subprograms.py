@@ -1,3 +1,5 @@
+import pytest
+
 from codegen import generate_vm
 from ir_gen import generate_ir
 from lexer import tokenize
@@ -76,3 +78,61 @@ def test_dynamic_array_index_no_longer_emits_placeholder():
 
     assert not any("INSTR NAO SUPORTADA" in line for line in vm)
     assert any(line in ("LOADN", "STOREN") for line in vm)
+
+
+def test_function_call_rejects_type_mismatch_argument():
+    source = (
+        "      PROGRAM T\n"
+        "      INTEGER A, R\n"
+        "      REAL X\n"
+        "      A = 2\n"
+        "      X = 3.5\n"
+        "      R = SUM2(A, X)\n"
+        "      END\n"
+        "      INTEGER FUNCTION SUM2(U, V)\n"
+        "      INTEGER U, V\n"
+        "      SUM2 = U + V\n"
+        "      RETURN\n"
+        "      END\n"
+    )
+
+    with pytest.raises(ValueError, match="Tipo de argumento incompativel em FUNCTION SUM2"):
+        _compile(source)
+
+
+def test_subroutine_call_rejects_type_mismatch_argument():
+    source = (
+        "      PROGRAM T\n"
+        "      INTEGER X\n"
+        "      REAL Y\n"
+        "      X = 1\n"
+        "      Y = 1.5\n"
+        "      CALL INC(Y)\n"
+        "      END\n"
+        "      SUBROUTINE INC(N)\n"
+        "      INTEGER N\n"
+        "      N = N + 1\n"
+        "      RETURN\n"
+        "      END\n"
+    )
+
+    with pytest.raises(ValueError, match="Tipo de argumento incompativel em SUBROUTINE INC"):
+        _compile(source)
+
+
+def test_subroutine_call_rejects_scalar_when_array_parameter_expected():
+    source = (
+        "      PROGRAM T\n"
+        "      INTEGER X\n"
+        "      X = 1\n"
+        "      CALL FILL(X)\n"
+        "      END\n"
+        "      SUBROUTINE FILL(A)\n"
+        "      INTEGER A(5)\n"
+        "      A(1) = 7\n"
+        "      RETURN\n"
+        "      END\n"
+    )
+
+    with pytest.raises(ValueError, match="Argumento 1 de SUBROUTINE FILL deve ser array"):
+        _compile(source)
