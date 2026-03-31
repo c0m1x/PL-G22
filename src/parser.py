@@ -26,7 +26,6 @@ from ast_nodes import (
 )
 from lexer import tokens
 
-
 # Expression and simple-statement parser based on PLY yacc.
 # Block statements (IF/DO) and program unit boundaries are handled line-wise.
 precedence = (
@@ -59,18 +58,18 @@ class _ListTokenLexer:
 # ---- Grammar: expression -------------------------------------------------
 def p_expr_binop(p):
     """expr : expr PLUS expr
-            | expr MINUS expr
-            | expr STAR expr
-            | expr SLASH expr
-            | expr DSTAR expr
-            | expr EQ expr
-            | expr NE expr
-            | expr LT expr
-            | expr LE expr
-            | expr GT expr
-            | expr GE expr
-            | expr AND expr
-            | expr OR expr"""
+    | expr MINUS expr
+    | expr STAR expr
+    | expr SLASH expr
+    | expr DSTAR expr
+    | expr EQ expr
+    | expr NE expr
+    | expr LT expr
+    | expr LE expr
+    | expr GT expr
+    | expr GE expr
+    | expr AND expr
+    | expr OR expr"""
     p[0] = BinOpNode(p.slice[2].type, p[1], p[3])
 
 
@@ -134,7 +133,7 @@ def p_expr_list_many(p):
 
 
 def p_opt_expr_list_empty(p):
-    "opt_expr_list : "
+    "opt_expr_list :"
     p[0] = []
 
 
@@ -146,9 +145,9 @@ def p_opt_expr_list_some(p):
 # ---- Grammar: declarations and lvalues -----------------------------------
 def p_type_name(p):
     """type_name : INTEGER
-                 | REAL
-                 | LOGICAL
-                 | CHARACTER"""
+    | REAL
+    | LOGICAL
+    | CHARACTER"""
     p[0] = p.slice[1].type
 
 
@@ -442,7 +441,12 @@ def parse(token_lines):
     # Pre-scan subprogram names for call/reference disambiguation in expr grammar.
     function_names = set()
     for _lineno, _label, line_toks in token_lines:
-        if len(line_toks) >= 3 and line_toks[0].type in ("INTEGER", "REAL", "LOGICAL", "CHARACTER") and line_toks[1].type == "FUNCTION" and line_toks[2].type == "ID":
+        if (
+            len(line_toks) >= 3
+            and line_toks[0].type in ("INTEGER", "REAL", "LOGICAL", "CHARACTER")
+            and line_toks[1].type == "FUNCTION"
+            and line_toks[2].type == "ID"
+        ):
             function_names.add(line_toks[2].value)
 
     # Parse main program body until END.
@@ -472,7 +476,11 @@ def parse(token_lines):
         if not toks:
             continue
 
-        if len(toks) >= 2 and toks[0].type in ("INTEGER", "REAL", "LOGICAL", "CHARACTER") and toks[1].type == "FUNCTION":
+        if (
+            len(toks) >= 2
+            and toks[0].type in ("INTEGER", "REAL", "LOGICAL", "CHARACTER")
+            and toks[1].type == "FUNCTION"
+        ):
             rtype, name, params = _parse_function_header(toks)
             fn_body = []
             while True:
