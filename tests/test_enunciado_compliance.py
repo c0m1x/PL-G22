@@ -50,7 +50,7 @@ def test_program_with_decl_types_and_logical_expression_compiles():
     assert any(ins.op == "AND" for ins in ir)
     assert any(ins.op == "OR" for ins in ir)
     assert any(ins.op == "PRINT" for ins in ir)
-    assert vm[-1] == "HALT"
+    assert vm[-1] == "STOP"
 
 
 def test_semantic_rejects_non_integer_do_control_and_bounds():
@@ -97,7 +97,7 @@ def test_goto_to_existing_label_is_accepted_and_emitted():
 
     _ast, ir, vm = _compile(source)
 
-    assert any(ins.op == "JMP" and ins.result == "100" for ins in ir)
-    assert any(ins.op == "LABEL" and ins.result == "100" for ins in ir)
-    assert any(line == "JUMP 100" for line in vm)
-    assert any(line == "100:" for line in vm)
+    assert any(ins.op == "JMP" and ins.result == "lbl100" for ins in ir)
+    assert any(ins.op == "LABEL" and ins.result == "lbl100" for ins in ir)
+    assert any(line == "JUMP lbl100" for line in vm)
+    assert any(line == "lbl100:" for line in vm)

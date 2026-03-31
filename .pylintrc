@@ -1,0 +1,19 @@
+[MAIN]
+py-version=3.10
+
+[MESSAGES CONTROL]
+disable=
+    missing-docstring,
+    fixme,
+    import-error,
+    too-few-public-methods,
+    line-too-long,
+    invalid-name,
+    global-statement,
+
+[FORMAT]
+max-line-length=120
+
+[DESIGN]
+max-args=10
+max-locals=20

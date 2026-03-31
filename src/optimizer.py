@@ -41,6 +41,14 @@ def copy_propagation(instrs: list[TACInstr]) -> list[TACInstr]:
     out: list[TACInstr] = []
 
     for ins in instrs:
+        # Labels are join points (e.g. loop back-edges): variable values are
+        # unknown, so discard all non-temporary aliases to avoid substituting
+        # stale constants from before the loop.
+        if ins.op == "LABEL":
+            aliases = {k: v for k, v in aliases.items() if isinstance(k, str) and k.startswith("_t")}
+            out.append(ins)
+            continue
+
         result = ins.result
         arg1 = _replace_arg(ins.arg1, aliases)
         arg2 = _replace_arg(ins.arg2, aliases)
