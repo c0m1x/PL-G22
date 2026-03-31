@@ -1,2 +1,6 @@
 ply
 pytest
+graphviz
+requests
+beautifulsoup4
+prompt_toolkit

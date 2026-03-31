@@ -1,11 +1,11 @@
-name: Tests
+name: CI
 
 on:
   push:
   pull_request:
 
 jobs:
-  pytest:
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -20,6 +20,16 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Lint (pylint)
+        run: pylint src/ --rcfile=.pylintrc --score=no || true
+
+      - name: Type check (mypy)
+        run: mypy src/ --ignore-missing-imports || true
+
+      - name: Format check (black)
+        run: black --check --line-length=120 src/
 
       - name: Run test suite
         run: pytest -q
