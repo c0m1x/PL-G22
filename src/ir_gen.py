@@ -61,8 +61,8 @@ class IRGen:
         self.temp_count += 1
         return t
 
-    def new_label(self, hint="L"):
-        l = f"{hint}_{self.label_count}"
+    def new_label(self, hint="lbl"):
+        l = f"{hint}{self.label_count}"
         self.label_count += 1
         return l
 
@@ -80,7 +80,11 @@ class IRGen:
         mapped = key
         for scope in self.scope_stack:
             mapped = scope.get(mapped, mapped)
-        return mapped[3:] if isinstance(mapped, str) and mapped.startswith("@L:") else mapped
+        if isinstance(mapped, str) and mapped.startswith("@L:"):
+            # No scope remapping — user-defined label; prefix with lbl to avoid
+            # purely-numeric labels and EWVM keyword conflicts.
+            return f"lbl{mapped[3:]}"
+        return mapped
 
     def visit(self, node):
         stmt_label = getattr(node, "stmt_label", None)
@@ -139,6 +143,7 @@ class IRGen:
         for value in node.values:
             val = self.visit(value)
             self.emit("PRINT", None, val)
+        self.emit("NEWLINE")
 
     def visit_ReadNode(self, node: ReadNode):
         for target in node.targets:
@@ -153,10 +158,13 @@ class IRGen:
 
     def visit_DoNode(self, node: DoNode):
         loop_var = self._map_name(node.var)
-        loop_label = self._map_label(node.label)
+        # Build loop labels without underscores and without keyword prefixes.
+        # Use the mapped label so inlined bodies get unique prefixes.
+        mapped = self._map_label(node.label)
+        start_lbl = f"doloop{mapped}"
+        end_lbl = f"endloop{mapped}"
+        # Initialise the loop variable before entering the loop.
         self.emit("COPY", loop_var, self.visit(node.start))
-        start_lbl = f"DO_{loop_label}"
-        end_lbl = f"ENDDO_{loop_label}"
         self.emit("LABEL", start_lbl)
         cond = self.new_temp()
         self.emit("LE", cond, loop_var, self.visit(node.end))
@@ -171,8 +179,8 @@ class IRGen:
         self.emit("LABEL", end_lbl)
 
     def visit_IfNode(self, node: IfNode):
-        else_lbl = self.new_label("ELSE")
-        end_lbl = self.new_label("ENDIF")
+        else_lbl = self.new_label("else")
+        end_lbl = self.new_label("endif")
         cond = self.visit(node.condition)
         self.emit("JMPF", else_lbl, cond)
         for stmt in node.then_body:
@@ -189,12 +197,12 @@ class IRGen:
     def _push_inline_scope(self, name: str, params: list[str], args: list, by_ref=False):
         call_id = self.inline_count
         self.inline_count += 1
-        prefix = f"{name}_{call_id}"
+        prefix = f"{name.lower()}{call_id}"
         mapping: dict[str, str] = {}
         for idx, param in enumerate(params):
-            mapping[param] = f"{prefix}__arg_{idx}_{param}"
-        mapping[name] = f"{prefix}__ret"
-        return_label = f"{prefix}__return"
+            mapping[param] = f"{prefix}a{idx}{param.lower()}"
+        mapping[name] = f"{prefix}ret"
+        return_label = f"{prefix}retlbl"
         mapping["@RETURN"] = return_label
         self.scope_stack.append(mapping)
 
@@ -221,9 +229,9 @@ class IRGen:
             for st in stmts:
                 stmt_lbl = getattr(st, "stmt_label", None)
                 if stmt_lbl is not None:
-                    label_map[str(stmt_lbl)] = f"{prefix}__L{stmt_lbl}"
+                    label_map[str(stmt_lbl)] = f"{prefix}lbl{stmt_lbl}"
                 if isinstance(st, DoNode):
-                    label_map[str(st.label)] = f"{prefix}__L{st.label}"
+                    label_map[str(st.label)] = f"{prefix}lbl{st.label}"
                     collect(st.body)
                 elif isinstance(st, IfNode):
                     collect(st.then_body)
@@ -258,7 +266,7 @@ class IRGen:
         fn = self.functions[node.name]
         mapping, return_label = self._push_inline_scope(fn.name, fn.params, node.args, by_ref=False)
         self.return_label_stack.append(return_label)
-        prefix = mapping[fn.name].rsplit("__", 1)[0]
+        prefix = f"{fn.name.lower()}{self.inline_count - 1}"
         self._inline_body_with_labels(fn.body, prefix)
         self.emit("LABEL", return_label)
         self.return_label_stack.pop()
@@ -274,7 +282,7 @@ class IRGen:
         sub = self.subroutines[node.name]
         mapping, return_label = self._push_inline_scope(sub.name, sub.params, node.args, by_ref=True)
         self.return_label_stack.append(return_label)
-        prefix = f"{sub.name}_{self.inline_count - 1}"
+        prefix = f"{sub.name.lower()}{self.inline_count - 1}"
         self._inline_body_with_labels(sub.body, prefix)
         self.emit("LABEL", return_label)
         self.return_label_stack.pop()

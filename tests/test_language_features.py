@@ -55,10 +55,10 @@ def test_if_else_generates_conditional_control_flow():
     _ast, ir, vm = _compile(source)
 
     assert any(ins.op == "JMPF" for ins in ir)
-    assert any(ins.op == "LABEL" and str(ins.result).startswith("ELSE_") for ins in ir)
-    assert any(ins.op == "LABEL" and str(ins.result).startswith("ENDIF_") for ins in ir)
+    assert any(ins.op == "LABEL" and str(ins.result).startswith("else") for ins in ir)
+    assert any(ins.op == "LABEL" and str(ins.result).startswith("endif") for ins in ir)
     assert any(ins.op == "PRINT" for ins in ir)
-    assert any(line.startswith("JZ ELSE_") for line in vm)
+    assert any(line.startswith("JZ else") for line in vm)
 
 
 def test_do_loop_with_step_generates_loop_structure():
@@ -74,12 +74,12 @@ def test_do_loop_with_step_generates_loop_structure():
 
     _ast, ir, vm = _compile(source)
 
-    assert any(ins.op == "LABEL" and ins.result == "DO_100" for ins in ir)
-    assert any(ins.op == "LABEL" and ins.result == "ENDDO_100" for ins in ir)
+    assert any(ins.op == "LABEL" and ins.result == "dolooplbl100" for ins in ir)
+    assert any(ins.op == "LABEL" and ins.result == "endlooplbl100" for ins in ir)
     assert any(ins.op == "LE" for ins in ir)
     assert any(ins.op == "ADD" for ins in ir)
-    assert any(line == "DO_100:" for line in vm)
-    assert any(line == "ENDDO_100:" for line in vm)
+    assert any(line == "dolooplbl100:" for line in vm)
+    assert any(line == "endlooplbl100:" for line in vm)
 
 
 def test_read_and_print_support_scalar_and_array_element():
@@ -122,7 +122,7 @@ def test_stop_statement_emits_explicit_halt_instruction():
     _ast, ir, vm = _compile(source)
 
     assert any(ins.op == "HALT" for ins in ir)
-    assert vm.count("HALT") >= 2
-    first_halt = vm.index("HALT")
-    last_halt = len(vm) - 1 - vm[::-1].index("HALT")
+    assert vm.count("STOP") >= 2
+    first_halt = vm.index("STOP")
+    last_halt = len(vm) - 1 - vm[::-1].index("STOP")
     assert first_halt < last_halt

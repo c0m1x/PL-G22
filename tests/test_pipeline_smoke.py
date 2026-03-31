@@ -23,5 +23,5 @@ def test_pipeline_generates_vm_for_simple_program():
     vm = generate_vm(ir, ast)
 
     assert any(ins.op == "PRINT" for ins in ir)
-    assert vm[0].startswith("ALLOC")
-    assert vm[-1] == "HALT"
+    assert vm[0].startswith("PUSHN")
+    assert vm[-1] == "STOP"
