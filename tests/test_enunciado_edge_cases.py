@@ -62,4 +62,4 @@ def test_external_function_name_type_declaration_is_accepted():
 
     assert len(ast.subprograms) == 1
     assert any(ins.op == "ADD" for ins in ir)
-    assert vm[-1] == "HALT"
+    assert vm[-1] == "STOP"
