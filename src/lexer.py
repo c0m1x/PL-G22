@@ -2,7 +2,6 @@ import re
 
 import ply.lex as lex
 
-
 RESERVED = {
     "PROGRAM",
     "END",
@@ -88,6 +87,7 @@ def t_NOT(t):
     r"\.NOT\."
     t.value = "NOT"
     return t
+
 
 t_ignore = " \t\r"
 
