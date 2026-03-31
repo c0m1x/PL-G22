@@ -208,9 +208,7 @@ class SemanticAnalyzer:
                 continue
             if isinstance(idx, LiteralNode) and dims and i < len(dims):
                 if idx.value < 1 or idx.value > dims[i]:
-                    self.errors.append(
-                        f"Indice fora dos limites em {node.name}: {idx.value} nao esta em 1..{dims[i]}"
-                    )
+                    self.errors.append(f"Indice fora dos limites em {node.name}: {idx.value} nao esta em 1..{dims[i]}")
         return sym["type"]
 
     def visit_LiteralNode(self, node: LiteralNode):

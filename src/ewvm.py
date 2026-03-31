@@ -40,8 +40,7 @@ def run_code(code: str, input_data: str = "") -> str:
         response.raise_for_status()
     except requests.exceptions.ConnectionError as exc:
         raise RuntimeError(
-            f"Nao foi possivel ligar a EWVM em {EWVM_URL}. "
-            "Verifica a variavel de ambiente EWVM_URL."
+            f"Nao foi possivel ligar a EWVM em {EWVM_URL}. " "Verifica a variavel de ambiente EWVM_URL."
         ) from exc
     except requests.exceptions.HTTPError as exc:
         raise RuntimeError(f"EWVM devolveu erro HTTP: {exc}") from exc

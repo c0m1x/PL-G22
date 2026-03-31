@@ -3,7 +3,7 @@ def preprocess(source: str):
     result = []
     for lineno, line in enumerate(lines, 1):
         line = line.ljust(72)
-        if line[0].upper() in ('C','*','!'):
+        if line[0].upper() in ("C", "*", "!"):
             continue
         if line.strip() == "":
             continue
@@ -11,7 +11,7 @@ def preprocess(source: str):
         continuation = line[5]
         code = line[6:72].rstrip()
 
-        if continuation not in (' ', '0'):
+        if continuation not in (" ", "0"):
             if result:
                 prev = result[-1]
                 result[-1] = (prev[0], prev[1], prev[2] + " " + code)
