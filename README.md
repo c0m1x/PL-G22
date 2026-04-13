@@ -38,7 +38,8 @@ python3 src/main.py example.f --dump-ast --dump-ir
 Testes:
 
 ```bash
-pytest -q
+python -m pytest -q
+RUN_EWVM_TESTS=1 python -m pytest -q tests/test_ewvm_outputs.py
 ```
 
 ## Alinhamento com o enunciado (auditoria)
@@ -78,6 +79,8 @@ Observacao importante sobre arrays:
 7. `GOTO label`, `READ`, `PRINT`, `STOP`
 8. arrays multidimensionais com validacao semantica de rank/limites
 9. subprogramas externos: `FUNCTION`, `SUBROUTINE`, `CALL`, `RETURN`
+10. I/O tipado no backend VM (`INTEGER/LOGICAL` com `ATOI/WRITEI`, `REAL` com `ATOF/WRITEF`, `CHARACTER` com `WRITES`)
+11. ciclos `DO` com guarda correta para `step` positivo e negativo
 
 ## Arquitetura de modulos
 
@@ -103,7 +106,9 @@ Suite em `tests/` cobre:
 7. regressao de lacunas criticas
 8. subprogramas e indices dinamicos de arrays
 
-No estado atual, a suite passa integralmente: `32 passed`.
+Estado atual verificado nesta iteracao: `43 passed, 2 skipped`.
+
+
 
 ## Historico de melhorias (alem da base 10)
 
