@@ -64,6 +64,89 @@ def _collect_vars(ast):
     return offsets, arrays, cursor
 
 
+def _collect_decl_types(ast):
+    var_types = {}
+    array_types = {}
+    for stmt in ast.body:
+        if not isinstance(stmt, DeclNode):
+            continue
+        for var in stmt.vars:
+            if isinstance(var, ArrayDeclNode):
+                array_types[var.name] = stmt.type_name
+            else:
+                var_types[var.name] = stmt.type_name
+    return var_types, array_types
+
+
+def _infer_ir_types(ir, var_types, array_types):
+    types = dict(var_types)
+
+    def _merge_type(current, inferred):
+        if inferred is None:
+            return current
+        if current is None:
+            return inferred
+        if current == inferred:
+            return current
+        if {current, inferred} == {"INTEGER", "REAL"}:
+            return "REAL"
+        # Keep the declared/stable type when in doubt.
+        return current
+
+    def _literal_type(value):
+        if isinstance(value, bool):
+            return "LOGICAL"
+        if isinstance(value, int):
+            return "INTEGER"
+        if isinstance(value, float):
+            return "REAL"
+        if isinstance(value, tuple) and len(value) == 2 and value[0] == "STR":
+            return "CHARACTER"
+        return None
+
+    def _resolve_type(value):
+        if isinstance(value, str):
+            return types.get(value)
+        return _literal_type(value)
+
+    changed = True
+    while changed:
+        changed = False
+        for ins in ir:
+            if not isinstance(ins.result, str):
+                continue
+
+            inferred = None
+
+            if ins.op == "COPY":
+                inferred = _resolve_type(ins.arg1)
+            elif ins.op == "LOAD_ARR":
+                inferred = array_types.get(ins.arg1)
+            elif ins.op in {"ADD", "SUB", "MUL", "DIV", "POW", "MOD"}:
+                t1 = _resolve_type(ins.arg1)
+                t2 = _resolve_type(ins.arg2)
+                if ins.op == "DIV":
+                    inferred = "REAL"
+                elif t1 == "REAL" or t2 == "REAL":
+                    inferred = "REAL"
+                elif t1 == "INTEGER" and t2 == "INTEGER":
+                    inferred = "INTEGER"
+            elif ins.op in {"EQ", "NE", "LT", "LE", "GT", "GE", "AND", "OR", "NOT"}:
+                inferred = "LOGICAL"
+            elif ins.op in {"NEG"}:
+                inferred = _resolve_type(ins.arg1)
+            elif ins.op in {"READ", "READ_ARR"}:
+                inferred = _resolve_type(ins.result)
+
+            current = types.get(ins.result)
+            merged = _merge_type(current, inferred)
+            if merged != current:
+                types[ins.result] = merged
+                changed = True
+
+    return types
+
+
 def _push_value(lines, operand, _offsets, ensure_offset):
     """Push a value onto the EWVM stack."""
     if isinstance(operand, bool):
@@ -81,7 +164,7 @@ def _push_value(lines, operand, _offsets, ensure_offset):
         lines.append(f'PUSHS "{operand}"')
 
 
-def _emit_write(lines, operand, offsets, ensure_offset):
+def _emit_write(lines, operand, offsets, ensure_offset, type_of):
     """Push a value and emit the appropriate WRITE instruction."""
     if isinstance(operand, bool):
         lines.append(f"PUSHI {1 if operand else 0}")
@@ -98,7 +181,13 @@ def _emit_write(lines, operand, offsets, ensure_offset):
     elif isinstance(operand, str):
         slot = ensure_offset(operand)
         lines.append(f"PUSHG {slot}")
-        lines.append("WRITEI")
+        otype = type_of(operand)
+        if otype == "REAL":
+            lines.append("WRITEF")
+        elif otype == "CHARACTER":
+            lines.append("WRITES")
+        else:
+            lines.append("WRITEI")
     else:
         lines.append(f'PUSHS "{operand}"')
         lines.append("WRITES")
@@ -155,6 +244,8 @@ def _emit_array_base_ptr(lines, base):
 
 def generate_vm(ir, ast):
     offsets, arrays, mem_size = _collect_vars(ast)
+    var_types, array_types = _collect_decl_types(ast)
+    inferred_types = _infer_ir_types(ir, var_types, array_types)
     next_free = mem_size
     # lines[0] will be updated as new temps are allocated
     lines = [f"PUSHN {mem_size}", "START"]
@@ -166,6 +257,9 @@ def generate_vm(ir, ast):
             next_free += 1
             lines[0] = f"PUSHN {next_free}"
         return offsets[name]
+
+    def type_of(name):
+        return inferred_types.get(name)
 
     # Pre-allocate temp slots
     for ins in ir:
@@ -204,14 +298,18 @@ def generate_vm(ir, ast):
             lines.append(f"STOREG {ensure_offset(ins.result)}")
 
         elif op == "PRINT":
-            _emit_write(lines, ins.arg1, offsets, ensure_offset)
+            _emit_write(lines, ins.arg1, offsets, ensure_offset, type_of)
 
         elif op == "NEWLINE":
             lines.append("WRITELN")
 
         elif op == "READ":
             lines.append("READ")
-            lines.append("ATOI")
+            target_type = type_of(ins.result)
+            if target_type == "REAL":
+                lines.append("ATOF")
+            elif target_type != "CHARACTER":
+                lines.append("ATOI")
             lines.append(f"STOREG {ensure_offset(ins.result)}")
 
         elif op == "JMP":
@@ -270,9 +368,13 @@ def generate_vm(ir, ast):
 
         elif op == "READ_ARR":
             elem_off = _resolve_array_offset(ins.result, ins.arg1, arrays)
+            arr_type = array_types.get(ins.result)
             if elem_off is not None:
                 lines.append("READ")
-                lines.append("ATOI")
+                if arr_type == "REAL":
+                    lines.append("ATOF")
+                elif arr_type != "CHARACTER":
+                    lines.append("ATOI")
                 lines.append(f"STOREG {elem_off}")
                 continue
 
@@ -289,7 +391,10 @@ def generate_vm(ir, ast):
                 ensure_offset,
             )
             lines.append("READ")
-            lines.append("ATOI")
+            if arr_type == "REAL":
+                lines.append("ATOF")
+            elif arr_type != "CHARACTER":
+                lines.append("ATOI")
             lines.append("STOREN")
 
         elif op == "HALT":

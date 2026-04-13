@@ -164,13 +164,36 @@ class IRGen:
         end_lbl = f"endloop{mapped}"
         # Initialise the loop variable before entering the loop.
         self.emit("COPY", loop_var, self.visit(node.start))
+        step_val = 1 if node.step is None else self.visit(node.step)
+        end_val = self.visit(node.end)
         self.emit("LABEL", start_lbl)
+
+        # Fortran DO termination depends on the sign of step:
+        # step > 0 => var <= end ; step <= 0 => var >= end.
+        step_positive = self.new_temp()
+        self.emit("GT", step_positive, step_val, 0)
+
+        cond_pos = self.new_temp()
+        self.emit("LE", cond_pos, loop_var, end_val)
+
+        cond_neg = self.new_temp()
+        self.emit("GE", cond_neg, loop_var, end_val)
+
+        select_pos = self.new_temp()
+        self.emit("AND", select_pos, step_positive, cond_pos)
+
+        not_step_positive = self.new_temp()
+        self.emit("NOT", not_step_positive, step_positive)
+
+        select_neg = self.new_temp()
+        self.emit("AND", select_neg, not_step_positive, cond_neg)
+
         cond = self.new_temp()
-        self.emit("LE", cond, loop_var, self.visit(node.end))
+        self.emit("OR", cond, select_pos, select_neg)
         self.emit("JMPF", end_lbl, cond)
+
         for stmt in node.body:
             self.visit(stmt)
-        step_val = 1 if node.step is None else self.visit(node.step)
         inc = self.new_temp()
         self.emit("ADD", inc, loop_var, step_val)
         self.emit("COPY", loop_var, inc)
