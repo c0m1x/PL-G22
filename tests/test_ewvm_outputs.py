@@ -62,3 +62,32 @@ def test_ewvm_example_factorial_with_input_3_matches_expected_output():
 
     assert "Introduza um numero inteiro positivo:" in output
     assert re.search(r"Fatorial\s+de\s+3\s*:\s*6", output)
+
+
+def test_ewvm_read_then_print_echoes_integer_input():
+    source = (
+        "      PROGRAM ECHO\n"
+        "      INTEGER N\n"
+        "      READ *, N\n"
+        "      PRINT *, N\n"
+        "      END\n"
+    )
+
+    output = run_code(_compile_to_vm(source), input_data="7\n")
+
+    assert re.search(r"(^|\D)7(\D|$)", output)
+
+
+def test_ewvm_two_reads_are_consumed_in_order_and_summed():
+    source = (
+        "      PROGRAM SUM2\n"
+        "      INTEGER A, B\n"
+        "      READ *, A\n"
+        "      READ *, B\n"
+        "      PRINT *, A + B\n"
+        "      END\n"
+    )
+
+    output = run_code(_compile_to_vm(source), input_data="2\n5\n")
+
+    assert re.search(r"(^|\D)7(\D|$)", output)
