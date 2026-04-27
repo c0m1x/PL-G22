@@ -41,6 +41,50 @@ def test_external_function_call_is_parsed_and_lowered():
     assert not any("INSTR NAO SUPORTADA" in line for line in vm)
 
 
+def test_function_without_arguments_is_parsed_and_inlined():
+    source = (
+        "      PROGRAM T\n"
+        "      INTEGER R, FIVE\n"
+        "      R = FIVE()\n"
+        "      PRINT *, R\n"
+        "      END\n"
+        "      INTEGER FUNCTION FIVE()\n"
+        "      FIVE = 5\n"
+        "      RETURN\n"
+        "      END\n"
+    )
+
+    ast, ir, vm = _compile(source)
+
+    assert len(ast.subprograms) == 1
+    assert any(ins.op == "COPY" and ins.arg1 == 5 for ins in ir)
+    assert not any("INSTR NAO SUPORTADA" in line for line in vm)
+
+
+def test_function_local_variables_are_renamed_during_inlining():
+    source = (
+        "      PROGRAM T\n"
+        "      INTEGER TMP, R, A, F\n"
+        "      TMP = 100\n"
+        "      A = 0\n"
+        "      R = F(A)\n"
+        "      PRINT *, TMP, R\n"
+        "      END\n"
+        "      INTEGER FUNCTION F(N)\n"
+        "      INTEGER N, TMP\n"
+        "      TMP = 1\n"
+        "      F = TMP\n"
+        "      RETURN\n"
+        "      END\n"
+    )
+
+    _ast, ir, vm = _compile(source)
+
+    assert any(ins.op == "COPY" and isinstance(ins.result, str) and ins.result.startswith("f0l") for ins in ir)
+    assert not any(ins.op == "COPY" and ins.result == "TMP" and ins.arg1 == 1 for ins in ir)
+    assert not any("INSTR NAO SUPORTADA" in line for line in vm)
+
+
 def test_subroutine_call_compiles_and_updates_identifier_argument():
     source = (
         "      PROGRAM T\n"
