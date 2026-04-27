@@ -74,3 +74,43 @@ def test_semantic_rejects_non_logical_and_operands():
 
     with pytest.raises(ValueError, match="Operador AND exige operandos LOGICAL"):
         _analyze(source)
+
+
+def test_semantic_rejects_logical_arithmetic_operand():
+    source = (
+        "      PROGRAM T\n"
+        "      INTEGER X\n"
+        "      LOGICAL L\n"
+        "      L = .TRUE.\n"
+        "      X = L + 1\n"
+        "      END\n"
+    )
+
+    with pytest.raises(ValueError, match="Operador PLUS exige operandos numericos"):
+        _analyze(source)
+
+
+def test_semantic_rejects_character_arithmetic_operand():
+    source = (
+        "      PROGRAM T\n"
+        "      INTEGER X\n"
+        "      CHARACTER C\n"
+        "      C = 'A'\n"
+        "      X = C * 2\n"
+        "      END\n"
+    )
+
+    with pytest.raises(ValueError, match="Operador STAR exige operandos numericos"):
+        _analyze(source)
+
+
+def test_semantic_rejects_non_integer_power_exponent():
+    source = (
+        "      PROGRAM T\n"
+        "      REAL X\n"
+        "      X = 2.0 ** 3.5\n"
+        "      END\n"
+    )
+
+    with pytest.raises(ValueError, match="Expoente de DSTAR deve ser INTEGER"):
+        _analyze(source)

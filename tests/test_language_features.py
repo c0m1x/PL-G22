@@ -39,6 +39,25 @@ def test_expression_precedence_and_associativity_on_ast():
     assert expr.right.right.op == "DSTAR"
 
 
+def test_power_operator_is_lowered_to_vm_loop():
+    source = (
+        "      PROGRAM T\n"
+        "      INTEGER A, B, X\n"
+        "      A = 2\n"
+        "      B = 3\n"
+        "      X = A ** B\n"
+        "      PRINT *, X\n"
+        "      END\n"
+    )
+
+    _ast, ir, vm = _compile(source)
+
+    assert any(ins.op == "POW" for ins in ir)
+    assert any(line.startswith("powloop") for line in vm)
+    assert any(line.startswith("powend") for line in vm)
+    assert not any("INSTR NAO SUPORTADA" in line for line in vm)
+
+
 def test_if_else_generates_conditional_control_flow():
     source = (
         "      PROGRAM T\n"
