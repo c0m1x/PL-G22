@@ -191,6 +191,16 @@ class SemanticAnalyzer:
             return True
         return False
 
+    def _is_numeric(self, type_name: str):
+        return type_name in ("INTEGER", "REAL", "UNKNOWN")
+
+    def _numeric_result_type(self, lt: str, rt: str):
+        if lt == "REAL" or rt == "REAL":
+            return "REAL"
+        if lt == "UNKNOWN" or rt == "UNKNOWN":
+            return "UNKNOWN"
+        return "INTEGER"
+
     def _extract_array_dims(self, node: ArrayDeclNode):
         dims: list[int] = []
         for dim_expr in node.dims:
@@ -244,6 +254,10 @@ class SemanticAnalyzer:
             if t not in ("LOGICAL", "UNKNOWN"):
                 self.errors.append("Operador NOT exige operando LOGICAL")
             return "LOGICAL"
+        if node.op == "MINUS":
+            if not self._is_numeric(t):
+                self.errors.append("Operador unario MINUS exige operando numerico")
+            return t
         return t
 
     def visit_BinOpNode(self, node: BinOpNode):
@@ -254,10 +268,29 @@ class SemanticAnalyzer:
                 self.errors.append(f"Operador {node.op} exige operandos LOGICAL")
             return "LOGICAL"
         if node.op in ("EQ", "NE", "LT", "LE", "GT", "GE"):
+            if node.op in ("LT", "LE", "GT", "GE"):
+                if not self._is_numeric(lt) or not self._is_numeric(rt):
+                    self.errors.append(f"Operador {node.op} exige operandos numericos")
+            elif not (
+                self._is_numeric(lt)
+                and self._is_numeric(rt)
+                or lt == rt
+                or lt == "UNKNOWN"
+                or rt == "UNKNOWN"
+            ):
+                self.errors.append(f"Operador {node.op} exige operandos compativeis")
             return "LOGICAL"
-        if lt == "REAL" or rt == "REAL":
-            return "REAL"
-        return "INTEGER"
+        if node.op == "DSTAR":
+            if not self._is_numeric(lt) or not self._is_numeric(rt):
+                self.errors.append("Operador DSTAR exige operandos numericos")
+            if rt not in ("INTEGER", "UNKNOWN"):
+                self.errors.append("Expoente de DSTAR deve ser INTEGER")
+            return "REAL" if lt == "REAL" else "INTEGER"
+        if node.op in ("PLUS", "MINUS", "STAR", "SLASH"):
+            if not self._is_numeric(lt) or not self._is_numeric(rt):
+                self.errors.append(f"Operador {node.op} exige operandos numericos")
+            return self._numeric_result_type(lt, rt)
+        return "UNKNOWN"
 
     def visit_PrintNode(self, node: PrintNode):
         for value in node.values:

@@ -78,6 +78,30 @@ def _collect_decl_types(ast):
     return var_types, array_types
 
 
+def _register_ir_decls(ir, offsets, arrays, mem_size, var_types, array_types):
+    cursor = mem_size
+    for ins in ir:
+        if ins.op == "DECL" and isinstance(ins.result, str):
+            var_types[ins.result] = ins.arg1
+            if ins.result not in offsets:
+                offsets[ins.result] = cursor
+                cursor += 1
+        elif ins.op == "DECL_ARR" and isinstance(ins.result, str):
+            dims = []
+            raw_dims = ins.arg1 if isinstance(ins.arg1, list) else []
+            for d in raw_dims:
+                dims.append(d if isinstance(d, int) and d > 0 else 1)
+            size = 1
+            for dim in dims:
+                size *= dim
+            if ins.result not in arrays:
+                arrays[ins.result] = {"base": cursor, "size": size, "dims": dims}
+                offsets[ins.result] = cursor
+                cursor += size
+            array_types[ins.result] = ins.arg2
+    return cursor
+
+
 def _infer_ir_types(ir, var_types, array_types):
     types = dict(var_types)
 
@@ -118,7 +142,11 @@ def _infer_ir_types(ir, var_types, array_types):
 
             inferred = None
 
-            if ins.op == "COPY":
+            if ins.op == "DECL":
+                inferred = ins.arg1
+            elif ins.op == "DECL_ARR":
+                inferred = None
+            elif ins.op == "COPY":
                 inferred = _resolve_type(ins.arg1)
             elif ins.op == "LOAD_ARR":
                 inferred = array_types.get(ins.arg1)
@@ -245,10 +273,12 @@ def _emit_array_base_ptr(lines, base):
 def generate_vm(ir, ast):
     offsets, arrays, mem_size = _collect_vars(ast)
     var_types, array_types = _collect_decl_types(ast)
+    mem_size = _register_ir_decls(ir, offsets, arrays, mem_size, var_types, array_types)
     inferred_types = _infer_ir_types(ir, var_types, array_types)
     next_free = mem_size
     # lines[0] will be updated as new temps are allocated
     lines = [f"PUSHN {mem_size}", "START"]
+    pow_count = 0
 
     def ensure_offset(name):
         nonlocal next_free
@@ -261,6 +291,37 @@ def generate_vm(ir, ast):
     def type_of(name):
         return inferred_types.get(name)
 
+    def emit_pow(base, exponent, result):
+        nonlocal pow_count
+        result_slot = ensure_offset(result)
+        exp_slot = ensure_offset(f"_powexp{pow_count}")
+        start_lbl = f"powloop{pow_count}"
+        end_lbl = f"powend{pow_count}"
+        pow_count += 1
+
+        if type_of(result) == "REAL":
+            lines.append("PUSHF 1.0")
+        else:
+            lines.append("PUSHI 1")
+        lines.append(f"STOREG {result_slot}")
+        _push_value(lines, exponent, offsets, ensure_offset)
+        lines.append(f"STOREG {exp_slot}")
+        lines.append(f"{start_lbl}:")
+        lines.append(f"PUSHG {exp_slot}")
+        lines.append("PUSHI 0")
+        lines.append("SUP")
+        lines.append(f"JZ {end_lbl}")
+        lines.append(f"PUSHG {result_slot}")
+        _push_value(lines, base, offsets, ensure_offset)
+        lines.append("MUL")
+        lines.append(f"STOREG {result_slot}")
+        lines.append(f"PUSHG {exp_slot}")
+        lines.append("PUSHI 1")
+        lines.append("SUB")
+        lines.append(f"STOREG {exp_slot}")
+        lines.append(f"JUMP {start_lbl}")
+        lines.append(f"{end_lbl}:")
+
     # Pre-allocate temp slots
     for ins in ir:
         if isinstance(ins.result, str) and ins.result.startswith("_t") and ins.result not in offsets:
@@ -268,6 +329,9 @@ def generate_vm(ir, ast):
 
     for ins in ir:
         op = ins.op
+
+        if op in {"DECL", "DECL_ARR"}:
+            continue
 
         if op == "COPY":
             _push_value(lines, ins.arg1, offsets, ensure_offset)
@@ -278,6 +342,9 @@ def generate_vm(ir, ast):
             _push_value(lines, ins.arg2, offsets, ensure_offset)
             lines.append(_VM_BIN[op])
             lines.append(f"STOREG {ensure_offset(ins.result)}")
+
+        elif op == "POW":
+            emit_pow(ins.arg1, ins.arg2, ins.result)
 
         elif op in _VM_CMP:
             _push_value(lines, ins.arg1, offsets, ensure_offset)
