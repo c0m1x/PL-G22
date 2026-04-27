@@ -1,4 +1,5 @@
 from ast_nodes import (
+    ArrayDeclNode,
     ArrayRefNode,
     AssignNode,
     BinOpNode,
@@ -17,6 +18,7 @@ from ast_nodes import (
     StopNode,
     SubroutineDefNode,
     UnaryOpNode,
+    VarDeclNode,
 )
 from ir import TACInstr
 
@@ -95,6 +97,15 @@ class IRGen:
         return meth(node)
 
     def visit_DeclNode(self, node: DeclNode):
+        if not self.scope_stack:
+            return None
+        for var in node.vars:
+            mapped = self._map_name(var.name)
+            if isinstance(var, ArrayDeclNode):
+                dims = [self.visit(dim) for dim in var.dims]
+                self.emit("DECL_ARR", mapped, dims, node.type_name)
+            elif isinstance(var, VarDeclNode):
+                self.emit("DECL", mapped, node.type_name)
         return None
 
     def visit_LiteralNode(self, node: LiteralNode):
@@ -216,7 +227,7 @@ class IRGen:
     def visit_StopNode(self, node: StopNode):
         self.emit("HALT")
 
-    def _push_inline_scope(self, name: str, params: list[str], args: list, by_ref=False):
+    def _push_inline_scope(self, name: str, params: list[str], args: list, body=None, return_type=None, by_ref=False):
         call_id = self.inline_count
         self.inline_count += 1
         prefix = f"{name.lower()}{call_id}"
@@ -226,7 +237,22 @@ class IRGen:
         mapping[name] = f"{prefix}ret"
         return_label = f"{prefix}retlbl"
         mapping["@RETURN"] = return_label
+
+        local_idx = 0
+        for stmt in body or []:
+            if not isinstance(stmt, DeclNode):
+                continue
+            for var in stmt.vars:
+                local_name = var.name
+                if local_name in mapping:
+                    continue
+                mapping[local_name] = f"{prefix}l{local_idx}{local_name.lower()}"
+                local_idx += 1
+
         self.scope_stack.append(mapping)
+
+        if return_type is not None:
+            self.emit("DECL", mapping[name], return_type)
 
         for idx, arg in enumerate(args[: len(params)]):
             param = params[idx]
@@ -286,7 +312,14 @@ class IRGen:
             return t
 
         fn = self.functions[node.name]
-        mapping, return_label = self._push_inline_scope(fn.name, fn.params, node.args, by_ref=False)
+        mapping, return_label = self._push_inline_scope(
+            fn.name,
+            fn.params,
+            node.args,
+            body=fn.body,
+            return_type=fn.return_type,
+            by_ref=False,
+        )
         self.return_label_stack.append(return_label)
         prefix = f"{fn.name.lower()}{self.inline_count - 1}"
         self._inline_body_with_labels(fn.body, prefix)
@@ -302,7 +335,7 @@ class IRGen:
         if node.name not in self.subroutines:
             return
         sub = self.subroutines[node.name]
-        mapping, return_label = self._push_inline_scope(sub.name, sub.params, node.args, by_ref=True)
+        mapping, return_label = self._push_inline_scope(sub.name, sub.params, node.args, body=sub.body, by_ref=True)
         self.return_label_stack.append(return_label)
         prefix = f"{sub.name.lower()}{self.inline_count - 1}"
         self._inline_body_with_labels(sub.body, prefix)
