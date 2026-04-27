@@ -8,7 +8,7 @@ a106894 - Francisco Quintas Barros
 
 Compilador em Python com pipeline completo:
 
-1. preprocessamento (estilo fixed-form)
+1. preprocessamento (estilo fixed-form Fortran 77)
 2. analise lexica
 3. parsing para AST
 4. analise semantica
@@ -38,9 +38,21 @@ python3 src/main.py example.f --dump-ast --dump-ir
 Testes:
 
 ```bash
-python -m pytest -q
-RUN_EWVM_TESTS=1 python -m pytest -q tests/test_ewvm_outputs.py
+python3 -m pytest -q
+RUN_EWVM_TESTS=1 python3 -m pytest -q tests/test_ewvm_outputs.py
 ```
+
+## Formato de entrada
+
+O compilador assume o formato `fixed-form` clássico de Fortran 77:
+
+1. colunas 1-5: label opcional;
+2. coluna 6: continuação de linha;
+3. colunas 7-72: código executável/declarativo.
+
+Assim, os exemplos devem ser escritos com a indentação tradicional, por exemplo
+`      PRINT *, 'Ola'`. Programas copiados em formato livre podem precisar de ser
+realinhados antes da compilação.
 
 ## Alinhamento com o enunciado (auditoria)
 
@@ -62,6 +74,7 @@ Requisitos tecnicos de linguagem (enunciado):
 3. IF-THEN-ELSE, DO com label, GOTO: `OK`
 4. I/O basico (`READ`, `PRINT`): `OK`
 5. Subprogramas (`FUNCTION`, `SUBROUTINE`, `CALL`) para valorizacao: `OK`
+6. Exponenciacao (`**`) via lowering de `POW` para VM: `OK`
 
 Observacao importante sobre arrays:
 
@@ -81,6 +94,7 @@ Observacao importante sobre arrays:
 9. subprogramas externos: `FUNCTION`, `SUBROUTINE`, `CALL`, `RETURN`
 10. I/O tipado no backend VM (`INTEGER/LOGICAL` com `ATOI/WRITEI`, `REAL` com `ATOF/WRITEF`, `CHARACTER` com `WRITES`)
 11. ciclos `DO` com guarda correta para `step` positivo e negativo
+12. funcoes sem argumentos e isolamento de variaveis locais em subprogramas inlinados
 
 ## Arquitetura de modulos
 
@@ -106,7 +120,7 @@ Suite em `tests/` cobre:
 7. regressao de lacunas criticas
 8. subprogramas e indices dinamicos de arrays
 
-Estado atual verificado nesta iteracao: `43 passed, 2 skipped`.
+Estado atual verificado nesta iteracao: `69 passed, 7 skipped`.
 
 
 
@@ -131,11 +145,15 @@ Com a iteracao atual, os pontos tecnicos criticos identificados foram fechados:
 1. parser em `ply.yacc`
 2. subprogramas (`FUNCTION`, `SUBROUTINE`, `CALL`, `RETURN`)
 3. indexacao dinamica de arrays no codegen VM
+4. exponenciacao `**` no backend VM
+5. validacao semantica reforcada de operadores
+6. funcoes sem argumentos
+7. isolamento de variaveis locais durante o inlining
 
 Para robustez extra de defesa/avaliacao, continua recomendado:
 
-1. bateria adicional de programas grandes do enunciado com comparacao de output na VM de referencia
-2. reforco de semantica de argumentos (tipagem de parametros e mais casos de aliasing)
+1. execucao regular dos testes EWVM com `RUN_EWVM_TESTS=1`
+2. reforco de semantica de argumentos em cenarios avancados de aliasing
 
 ## Roadmap tecnico objetivo
 
