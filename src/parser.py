@@ -114,7 +114,7 @@ def p_expr_id(p):
 
 
 def p_expr_ref_or_call(p):
-    "expr : ID LPAREN expr_list RPAREN"
+    "expr : ID LPAREN opt_expr_list RPAREN"
     if p[1] in _CURRENT_FUNCTION_NAMES or p[1] in _INTRINSIC_FUNCTION_NAMES:
         p[0] = FuncCallNode(p[1], p[3])
     else:
