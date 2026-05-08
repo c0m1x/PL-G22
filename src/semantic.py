@@ -419,7 +419,7 @@ class SemanticAnalyzer:
             "SUBROUTINE",
         )
 
-    def visit_ReturnNode(self, node: ReturnNode):
+    def visit_ReturnNode(self, _node: ReturnNode):
         return None
 
     def visit_ProgramNode(self, node: ProgramNode):

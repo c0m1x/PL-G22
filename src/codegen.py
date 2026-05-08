@@ -153,9 +153,7 @@ def _infer_ir_types(ir, var_types, array_types):
             elif ins.op in {"ADD", "SUB", "MUL", "DIV", "POW", "MOD"}:
                 t1 = _resolve_type(ins.arg1)
                 t2 = _resolve_type(ins.arg2)
-                if ins.op == "DIV":
-                    inferred = "REAL"
-                elif t1 == "REAL" or t2 == "REAL":
+                if t1 == "REAL" or t2 == "REAL":
                     inferred = "REAL"
                 elif t1 == "INTEGER" and t2 == "INTEGER":
                     inferred = "INTEGER"
@@ -192,7 +190,7 @@ def _push_value(lines, operand, _offsets, ensure_offset):
         lines.append(f'PUSHS "{operand}"')
 
 
-def _emit_write(lines, operand, offsets, ensure_offset, type_of):
+def _emit_write(lines, operand, _offsets, ensure_offset, type_of):
     """Push a value and emit the appropriate WRITE instruction."""
     if isinstance(operand, bool):
         lines.append(f"PUSHI {1 if operand else 0}")
@@ -276,7 +274,6 @@ def generate_vm(ir, ast):
     mem_size = _register_ir_decls(ir, offsets, arrays, mem_size, var_types, array_types)
     inferred_types = _infer_ir_types(ir, var_types, array_types)
     next_free = mem_size
-    # lines[0] will be updated as new temps are allocated
     lines = [f"PUSHN {mem_size}", "START"]
     pow_count = 0
 
@@ -322,7 +319,6 @@ def generate_vm(ir, ast):
         lines.append(f"JUMP {start_lbl}")
         lines.append(f"{end_lbl}:")
 
-    # Pre-allocate temp slots
     for ins in ir:
         if isinstance(ins.result, str) and ins.result.startswith("_t") and ins.result not in offsets:
             ensure_offset(ins.result)
@@ -444,7 +440,6 @@ def generate_vm(ir, ast):
                     lines.append("ATOI")
                 lines.append(f"STOREG {elem_off}")
                 continue
-
             arr = arrays.get(ins.result)
             if arr is None:
                 lines.append(f"// INSTR NAO SUPORTADA: {ins}")

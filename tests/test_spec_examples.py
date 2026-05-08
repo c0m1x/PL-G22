@@ -1,23 +1,6 @@
 """Tests the five example programs from the project spec (PL2026-projeto)."""
 
-from codegen import generate_vm
-from ir_gen import generate_ir
-from lexer import tokenize
-from optimizer import optimize
-from parser import parse
-from preprocessor import preprocess
-from semantic import analyze
-
-
-def _compile(source: str):
-    lines = preprocess(source)
-    tokens = tokenize(lines)
-    ast = parse(tokens)
-    ast, _sym = analyze(ast)
-    ir = generate_ir(ast)
-    ir = optimize(ir)
-    vm = generate_vm(ir, ast)
-    return ast, ir, vm
+from conftest import compile_fortran_optimized as _compile
 
 
 # ---- Regression: optimizer must not constant-fold loop variables ----------

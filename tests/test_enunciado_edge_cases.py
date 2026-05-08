@@ -1,19 +1,4 @@
-from codegen import generate_vm
-from ir_gen import generate_ir
-from lexer import tokenize
-from parser import parse
-from preprocessor import preprocess
-from semantic import analyze
-
-
-def _compile(source: str):
-    lines = preprocess(source)
-    tokens = tokenize(lines)
-    ast = parse(tokens)
-    ast, _sym = analyze(ast)
-    ir = generate_ir(ast)
-    vm = generate_vm(ir, ast)
-    return ast, ir, vm
+from conftest import compile_fortran as _compile
 
 
 def test_mod_intrinsic_in_if_condition_compiles():

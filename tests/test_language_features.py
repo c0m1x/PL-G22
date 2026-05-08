@@ -1,22 +1,8 @@
 from ast_nodes import BinOpNode
-from codegen import generate_vm
 from ir import TACInstr
-from ir_gen import generate_ir
-from lexer import tokenize
 from optimizer import constant_folding
-from parser import parse
-from preprocessor import preprocess
-from semantic import analyze
 
-
-def _compile(source: str):
-    lines = preprocess(source)
-    tokens = tokenize(lines)
-    ast = parse(tokens)
-    ast, _sym = analyze(ast)
-    ir = generate_ir(ast)
-    vm = generate_vm(ir, ast)
-    return ast, ir, vm
+from conftest import compile_fortran as _compile
 
 
 def test_expression_precedence_and_associativity_on_ast():
