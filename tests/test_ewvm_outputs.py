@@ -1,35 +1,13 @@
-import os
 import re
 
 import pytest
 
-from codegen import generate_vm
-from ir_gen import generate_ir
-from lexer import tokenize
-from optimizer import optimize
-from parser import parse
-from preprocessor import preprocess
-from semantic import analyze
-
-pytest.importorskip("requests")
-pytest.importorskip("bs4")
-
-from ewvm import run_code
-
-pytestmark = pytest.mark.skipif(
-    os.environ.get("RUN_EWVM_TESTS") != "1",
-    reason="EWVM integration tests disabled (set RUN_EWVM_TESTS=1 to enable)",
-)
+from conftest import compile_fortran_optimized
+from vm import run as vm_run
 
 
 def _compile_to_vm(source: str) -> str:
-    lines = preprocess(source)
-    tokens = tokenize(lines)
-    ast = parse(tokens)
-    ast, _sym = analyze(ast)
-    ir = generate_ir(ast)
-    ir = optimize(ir)
-    vm = generate_vm(ir, ast)
+    _, _, vm = compile_fortran_optimized(source)
     return "\n".join(vm)
 
 
@@ -40,7 +18,7 @@ def test_ewvm_example_hello_output_matches_expected():
         "      END\n"
     )
 
-    output = run_code(_compile_to_vm(source))
+    output = vm_run(_compile_to_vm(source))
     assert "Ola, Mundo!" in output
 
 
@@ -58,7 +36,7 @@ def test_ewvm_example_factorial_with_input_3_matches_expected_output():
         "      END\n"
     )
 
-    output = run_code(_compile_to_vm(source), input_data="3\n")
+    output = vm_run(_compile_to_vm(source), input_data="3\n")
 
     assert "Introduza um numero inteiro positivo:" in output
     assert re.search(r"Fatorial\s+de\s+3\s*:\s*6", output)
@@ -73,7 +51,7 @@ def test_ewvm_read_then_print_echoes_integer_input():
         "      END\n"
     )
 
-    output = run_code(_compile_to_vm(source), input_data="7\n")
+    output = vm_run(_compile_to_vm(source), input_data="7\n")
 
     assert re.search(r"(^|\D)7(\D|$)", output)
 
@@ -88,7 +66,7 @@ def test_ewvm_two_reads_are_consumed_in_order_and_summed():
         "      END\n"
     )
 
-    output = run_code(_compile_to_vm(source), input_data="2\n5\n")
+    output = vm_run(_compile_to_vm(source), input_data="2\n5\n")
 
     assert re.search(r"(^|\D)7(\D|$)", output)
 
@@ -117,7 +95,7 @@ def test_ewvm_example_primo_with_input_7_matches_expected_output():
         "      END\n"
     )
 
-    output = run_code(_compile_to_vm(source), input_data="7\n")
+    output = vm_run(_compile_to_vm(source), input_data="7\n")
 
     assert re.search(r"7\s+e\s+um\s+numero\s+primo", output)
 
@@ -137,7 +115,7 @@ def test_ewvm_example_somaarr_with_inputs_1_to_5_matches_expected_output():
         "      END\n"
     )
 
-    output = run_code(_compile_to_vm(source), input_data="1\n2\n3\n4\n5\n")
+    output = vm_run(_compile_to_vm(source), input_data="1\n2\n3\n4\n5\n")
 
     assert re.search(r"A\s+soma\s+dos\s+numeros\s+e:\s*15", output)
 
@@ -170,7 +148,7 @@ def test_ewvm_example_conversor_with_input_10_matches_expected_output():
         "      END\n"
     )
 
-    output = run_code(_compile_to_vm(source), input_data="10\n")
+    output = vm_run(_compile_to_vm(source), input_data="10\n")
 
     assert re.search(r"BASE\s+2\s*:\s*1010", output)
     assert re.search(r"BASE\s+8\s*:\s*12", output)

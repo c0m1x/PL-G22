@@ -142,7 +142,6 @@ def p_opt_expr_list_some(p):
     p[0] = p[1]
 
 
-# ---- Grammar: declarations and lvalues -----------------------------------
 def p_type_name(p):
     """type_name : INTEGER
     | REAL

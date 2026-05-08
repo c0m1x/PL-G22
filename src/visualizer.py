@@ -135,13 +135,13 @@ class _ASTVisualizer:
     def _visit_GotoNode(self, node: GotoNode) -> str:
         return self._node(f"GOTO\n{node.label}", "#ffcdd2")
 
-    def _visit_ContinueNode(self, node: ContinueNode) -> str:
+    def _visit_ContinueNode(self, _node: ContinueNode) -> str:
         return self._node("CONTINUE", "#e0e0e0")
 
-    def _visit_StopNode(self, node: StopNode) -> str:
+    def _visit_StopNode(self, _node: StopNode) -> str:
         return self._node("STOP", "#ffcdd2")
 
-    def _visit_ReturnNode(self, node: ReturnNode) -> str:
+    def _visit_ReturnNode(self, _node: ReturnNode) -> str:
         return self._node("RETURN", "#ffcdd2")
 
     def _visit_PrintNode(self, node: PrintNode) -> str:

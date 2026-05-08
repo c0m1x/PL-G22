@@ -224,7 +224,7 @@ class IRGen:
             self.visit(stmt)
         self.emit("LABEL", end_lbl)
 
-    def visit_StopNode(self, node: StopNode):
+    def visit_StopNode(self, _node: StopNode):
         self.emit("HALT")
 
     def _push_inline_scope(self, name: str, params: list[str], args: list, body=None, return_type=None, by_ref=False):
@@ -335,7 +335,7 @@ class IRGen:
         if node.name not in self.subroutines:
             return
         sub = self.subroutines[node.name]
-        mapping, return_label = self._push_inline_scope(sub.name, sub.params, node.args, body=sub.body, by_ref=True)
+        _, return_label = self._push_inline_scope(sub.name, sub.params, node.args, body=sub.body, by_ref=True)
         self.return_label_stack.append(return_label)
         prefix = f"{sub.name.lower()}{self.inline_count - 1}"
         self._inline_body_with_labels(sub.body, prefix)
@@ -343,7 +343,7 @@ class IRGen:
         self.return_label_stack.pop()
         self.scope_stack.pop()
 
-    def visit_ReturnNode(self, node: ReturnNode):
+    def visit_ReturnNode(self, _node: ReturnNode):
         if self.return_label_stack:
             self.emit("JMP", self.return_label_stack[-1])
 
