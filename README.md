@@ -42,6 +42,13 @@ python3 -m pytest -q
 RUN_EWVM_TESTS=1 python3 -m pytest -q tests/test_ewvm_outputs.py
 ```
 
+Otimização da IR textual:
+
+```bash
+python3 src/main.py examples/hello.f --dump-ir --no-opt > hello.ir
+python3 src/main.py opt-ir hello.ir -o hello.opt.ir
+```
+
 ## Formato de entrada
 
 O compilador assume o formato `fixed-form` clássico de Fortran 77:
@@ -120,7 +127,7 @@ Suite em `tests/` cobre:
 7. regressao de lacunas criticas
 8. subprogramas e indices dinamicos de arrays
 
-Estado atual verificado nesta iteracao: `69 passed, 7 skipped`.
+Estado atual verificado nesta iteracao: `76 passed`.
 
 
 
