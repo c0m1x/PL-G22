@@ -64,6 +64,7 @@ ADD
 STOREG 15
 PUSHG 15
 STOREG 1
+lbl30:
 PUSHG 0
 PUSHI 1
 ADD
@@ -73,6 +74,8 @@ STOREG 0
 JUMP dolooplbl30
 endlooplbl30:
 PUSHS "A soma dos numeros e: "
+WRITES
+PUSHS " "
 WRITES
 PUSHG 1
 WRITEI

@@ -150,6 +150,11 @@ def p_type_name(p):
     p[0] = p.slice[1].type
 
 
+def p_type_name_character_len(p):
+    "type_name : CHARACTER STAR INT_LIT"
+    p[0] = "CHARACTER"
+
+
 def p_var_spec_scalar(p):
     "var_spec : ID"
     p[0] = VarDeclNode(p[1])
@@ -206,9 +211,24 @@ def p_stmt_print(p):
     p[0] = PrintNode(p[4])
 
 
+def p_stmt_write_print_style(p):
+    "stmt : WRITE STAR COMMA expr_list"
+    p[0] = PrintNode(p[4])
+
+
+def p_stmt_write_list_directed(p):
+    "stmt : WRITE LPAREN STAR COMMA STAR RPAREN expr_list"
+    p[0] = PrintNode(p[7])
+
+
 def p_stmt_read(p):
     "stmt : READ STAR COMMA lvalue_list"
     p[0] = ReadNode(p[4])
+
+
+def p_stmt_read_list_directed(p):
+    "stmt : READ LPAREN STAR COMMA STAR RPAREN lvalue_list"
+    p[0] = ReadNode(p[7])
 
 
 def p_stmt_goto(p):
@@ -219,6 +239,16 @@ def p_stmt_goto(p):
 def p_stmt_goto_id(p):
     "stmt : GOTO ID"
     p[0] = GotoNode(str(p[2]))
+
+
+def p_stmt_go_to(p):
+    "stmt : GO TO INT_LIT"
+    p[0] = GotoNode(str(p[3]))
+
+
+def p_stmt_go_to_id(p):
+    "stmt : GO TO ID"
+    p[0] = GotoNode(str(p[3]))
 
 
 def p_stmt_continue(p):
@@ -252,6 +282,7 @@ _EXPR_PARSER = yacc.yacc(
     debug=False,
     write_tables=False,
     optimize=False,
+    errorlog=yacc.NullLogger(),
     tabmodule="_fortran_expr_parsetab",
 )
 _STMT_PARSER = yacc.yacc(
@@ -259,6 +290,7 @@ _STMT_PARSER = yacc.yacc(
     debug=False,
     write_tables=False,
     optimize=False,
+    errorlog=yacc.NullLogger(),
     tabmodule="_fortran_stmt_parsetab",
 )
 
@@ -296,6 +328,20 @@ def _stmt_with_label(stmt, label):
     return stmt
 
 
+def _is_end_if(tokens_in_line):
+    return bool(
+        tokens_in_line
+        and (
+            tokens_in_line[0].type == "ENDIF"
+            or (len(tokens_in_line) == 2 and tokens_in_line[0].type == "END" and tokens_in_line[1].type == "IF")
+        )
+    )
+
+
+def _is_program_unit_end(tokens_in_line):
+    return bool(tokens_in_line and tokens_in_line[0].type == "END" and not _is_end_if(tokens_in_line))
+
+
 def _parse_stmt_line(line_info, line_iter, function_names):
     lineno, label, toks = line_info
     if not toks:
@@ -319,7 +365,7 @@ def _parse_stmt_line(line_info, line_iter, function_names):
             if nxt is None:
                 raise SyntaxError(f"Linha {lineno}: IF sem ENDIF")
             nxt_tokens = nxt[2]
-            if nxt_tokens and nxt_tokens[0].type == "ENDIF":
+            if _is_end_if(nxt_tokens):
                 break
             if nxt_tokens and nxt_tokens[0].type == "ELSE":
                 current = else_body
@@ -456,7 +502,7 @@ def parse(token_lines):
     ended = False
     for line_info in it:
         toks = line_info[2]
-        if toks and toks[0].type == "END":
+        if _is_program_unit_end(toks):
             ended = True
             remainder = list(it)
             break
@@ -487,7 +533,7 @@ def parse(token_lines):
                 if nxt is None:
                     raise SyntaxError(f"FUNCTION {name} sem END")
                 nxt_toks = nxt[2]
-                if nxt_toks and nxt_toks[0].type == "END":
+                if _is_program_unit_end(nxt_toks):
                     break
                 stmt = _parse_stmt_line(nxt, rem_it, function_names)
                 if stmt is not None:
@@ -503,7 +549,7 @@ def parse(token_lines):
                 if nxt is None:
                     raise SyntaxError(f"SUBROUTINE {name} sem END")
                 nxt_toks = nxt[2]
-                if nxt_toks and nxt_toks[0].type == "END":
+                if _is_program_unit_end(nxt_toks):
                     break
                 stmt = _parse_stmt_line(nxt, rem_it, function_names)
                 if stmt is not None:

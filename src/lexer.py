@@ -16,6 +16,8 @@ RESERVED = {
     "DO",
     "CONTINUE",
     "GOTO",
+    "GO",
+    "TO",
     "READ",
     "PRINT",
     "WRITE",
@@ -99,7 +101,7 @@ def t_BOOL_LIT(t):
 
 
 def t_REAL_LIT(t):
-    r"\d+\.\d*([EeDd][+-]?\d+)?|\.\d+([EeDd][+-]?\d+)?"
+    r"(\d+\.\d*|\.\d+)([EeDd][+-]?\d+)?|\d+[EeDd][+-]?\d+"
     t.value = float(t.value.replace("D", "E").replace("d", "e"))
     return t
 
@@ -119,8 +121,10 @@ def t_ID(t):
 
 
 def t_STRING_LIT(t):
-    r"'[^']*'"
-    t.value = t.value[1:-1]
+    r"'([^']|'')*'|\"([^\"]|\"\")*\""
+    quote = t.value[0]
+    inner = t.value[1:-1]
+    t.value = inner.replace("''", "'") if quote == "'" else inner.replace('""', '"')
     return t
 
 

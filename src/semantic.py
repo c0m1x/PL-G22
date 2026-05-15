@@ -103,18 +103,27 @@ class SemanticAnalyzer:
         self.current_scope = prev_scope
         self.labels = prev_labels
 
-    def _collect_labels(self, stmts):
-        labels: set[str] = set()
+    def _add_label(self, labels: set[str], label):
+        lbl = str(label)
+        if lbl in labels:
+            self.errors.append(f"Label duplicada: {lbl}")
+        labels.add(lbl)
+
+    def _collect_labels_into(self, stmts, labels: set[str]):
         for stmt in stmts:
             lbl = getattr(stmt, "stmt_label", None)
             if lbl is not None:
-                labels.add(str(lbl))
+                self._add_label(labels, lbl)
             if isinstance(stmt, IfNode):
-                labels.update(self._collect_labels(stmt.then_body))
-                labels.update(self._collect_labels(stmt.else_body))
+                self._collect_labels_into(stmt.then_body, labels)
+                self._collect_labels_into(stmt.else_body, labels)
             elif isinstance(stmt, DoNode):
-                labels.add(str(stmt.label))
-                labels.update(self._collect_labels(stmt.body))
+                self._add_label(labels, stmt.label)
+                self._collect_labels_into(stmt.body, labels)
+
+    def _collect_labels(self, stmts):
+        labels: set[str] = set()
+        self._collect_labels_into(stmts, labels)
         return labels
 
     def _infer_subprogram_param_metadata(self, sub):
@@ -322,6 +331,8 @@ class SemanticAnalyzer:
             step_t = self.visit(node.step)
             if step_t not in ("INTEGER", "UNKNOWN"):
                 self.errors.append("STEP do DO deve ser INTEGER")
+            if isinstance(node.step, LiteralNode) and node.step.value == 0:
+                self.errors.append("STEP do DO nao pode ser zero")
         for stmt in node.body:
             self.visit(stmt)
 

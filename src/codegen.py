@@ -173,12 +173,17 @@ def _infer_ir_types(ir, var_types, array_types):
     return types
 
 
+def _vm_string_literal(value):
+    escaped = str(value).replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
+
+
 def _push_value(lines, operand, _offsets, ensure_offset):
     """Push a value onto the EWVM stack."""
     if isinstance(operand, bool):
         lines.append(f"PUSHI {1 if operand else 0}")
     elif isinstance(operand, tuple) and len(operand) == 2 and operand[0] == "STR":
-        lines.append(f'PUSHS "{operand[1]}"')
+        lines.append(f"PUSHS {_vm_string_literal(operand[1])}")
     elif isinstance(operand, int):
         lines.append(f"PUSHI {operand}")
     elif isinstance(operand, float):
@@ -187,7 +192,7 @@ def _push_value(lines, operand, _offsets, ensure_offset):
         slot = ensure_offset(operand)
         lines.append(f"PUSHG {slot}")
     else:
-        lines.append(f'PUSHS "{operand}"')
+        lines.append(f"PUSHS {_vm_string_literal(operand)}")
 
 
 def _emit_write(lines, operand, _offsets, ensure_offset, type_of):
@@ -196,7 +201,7 @@ def _emit_write(lines, operand, _offsets, ensure_offset, type_of):
         lines.append(f"PUSHI {1 if operand else 0}")
         lines.append("WRITEI")
     elif isinstance(operand, tuple) and len(operand) == 2 and operand[0] == "STR":
-        lines.append(f'PUSHS "{operand[1]}"')
+        lines.append(f"PUSHS {_vm_string_literal(operand[1])}")
         lines.append("WRITES")
     elif isinstance(operand, int):
         lines.append(f"PUSHI {operand}")
@@ -215,7 +220,7 @@ def _emit_write(lines, operand, _offsets, ensure_offset, type_of):
         else:
             lines.append("WRITEI")
     else:
-        lines.append(f'PUSHS "{operand}"')
+        lines.append(f"PUSHS {_vm_string_literal(operand)}")
         lines.append("WRITES")
 
 
@@ -239,7 +244,7 @@ def _resolve_array_offset(arr_name, idx, arrays):
         if pos < 0 or pos >= dim:
             return None
         stride = 1
-        for rem in dims[axis + 1 :]:
+        for rem in dims[:axis]:
             stride *= rem
         linear += pos * stride
     return base + linear
@@ -253,7 +258,7 @@ def _emit_runtime_linear_index(lines, idx_list, dims, offsets, ensure_offset):
         lines.append("PUSHI 1")
         lines.append("SUB")
         stride = 1
-        for rem in dims[axis + 1 :]:
+        for rem in dims[:axis]:
             stride *= rem
         if stride != 1:
             lines.append(f"PUSHI {stride}")
@@ -362,6 +367,9 @@ def generate_vm(ir, ast):
 
         elif op == "PRINT":
             _emit_write(lines, ins.arg1, offsets, ensure_offset, type_of)
+
+        elif op == "PRINT_SEP":
+            _emit_write(lines, ("STR", " "), offsets, ensure_offset, type_of)
 
         elif op == "NEWLINE":
             lines.append("WRITELN")

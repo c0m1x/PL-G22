@@ -32,3 +32,16 @@ def test_preprocess_handles_label_and_continuation():
     assert assign_line[1] == "10"
     # Normalizamos espacos para validar a juncao logica da continuacao.
     assert " ".join(assign_line[2].split()) == "A = 1 + 2"
+
+
+def test_preprocess_accepts_lightly_indented_free_form_lines():
+    source = (
+        "PROGRAM T\n"
+        "     INTEGER X\n"
+        "     X = 1\n"
+        "END\n"
+    )
+
+    out = preprocess(source)
+
+    assert [line[2] for line in out] == ["PROGRAM T", "INTEGER X", "X = 1", "END"]
