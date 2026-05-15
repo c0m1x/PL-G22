@@ -129,7 +129,7 @@ Suite em `tests/` cobre:
 7. regressao de lacunas criticas
 8. subprogramas e indices dinamicos de arrays
 
-Estado atual verificado nesta iteracao: `92 passed`.
+Estado atual verificado nesta iteracao: `93 passed`.
 
 
 
