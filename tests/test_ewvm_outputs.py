@@ -71,6 +71,21 @@ def test_ewvm_two_reads_are_consumed_in_order_and_summed():
     assert re.search(r"(^|\D)7(\D|$)", output)
 
 
+def test_ewvm_print_list_directed_values_are_separated():
+    source = (
+        "      PROGRAM T\n"
+        "      INTEGER A, B\n"
+        "      A = 1\n"
+        "      B = 2\n"
+        "      PRINT *, A, B\n"
+        "      END\n"
+    )
+
+    output = vm_run(_compile_to_vm(source))
+
+    assert re.search(r"1\s+2", output)
+
+
 def test_ewvm_example_primo_with_input_7_matches_expected_output():
     source = (
         "      PROGRAM PRIMO\n"

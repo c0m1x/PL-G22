@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import sys
 from typing import Any
 
@@ -79,7 +80,10 @@ def run(code: str, input_data: str = "", max_steps: int = 100_000) -> str:
         elif op == "PUSHS":
             s = arg.strip()
             if s.startswith('"') and s.endswith('"'):
-                s = s[1:-1]
+                try:
+                    s = ast.literal_eval(s)
+                except (SyntaxError, ValueError):
+                    s = s[1:-1]
             push(s)
 
         elif op == "PUSHG":

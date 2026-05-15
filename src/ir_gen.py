@@ -150,9 +150,11 @@ class IRGen:
             self.emit("STORE_ARR", self._map_name(node.target.name), idx_vals, src)
 
     def visit_PrintNode(self, node: PrintNode):
-        for value in node.values:
+        for idx, value in enumerate(node.values):
             val = self.visit(value)
             self.emit("PRINT", None, val)
+            if idx + 1 < len(node.values):
+                self.emit("PRINT_SEP")
         self.emit("NEWLINE")
 
     def visit_ReadNode(self, node: ReadNode):
@@ -177,6 +179,7 @@ class IRGen:
         self.emit("COPY", loop_var, self.visit(node.start))
         step_val = 1 if node.step is None else self.visit(node.step)
         end_val = self.visit(node.end)
+        terminal_lbl = self._map_label(node.label)
         self.emit("LABEL", start_lbl)
 
         # Fortran DO termination depends on the sign of step:
@@ -205,6 +208,7 @@ class IRGen:
 
         for stmt in node.body:
             self.visit(stmt)
+        self.emit("LABEL", terminal_lbl)
         inc = self.new_temp()
         self.emit("ADD", inc, loop_var, step_val)
         self.emit("COPY", loop_var, inc)
