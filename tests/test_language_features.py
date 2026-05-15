@@ -66,6 +66,23 @@ def test_if_else_generates_conditional_control_flow():
     assert any(line.startswith("JZ else") for line in vm)
 
 
+def test_standard_end_if_spelling_is_accepted():
+    source = (
+        "      PROGRAM T\n"
+        "      INTEGER X\n"
+        "      X = 1\n"
+        "      IF (X .EQ. 1) THEN\n"
+        "      PRINT *, X\n"
+        "      END IF\n"
+        "      END\n"
+    )
+
+    _ast, ir, vm = _compile(source)
+
+    assert any(ins.op == "PRINT" for ins in ir)
+    assert any(line.startswith("JZ else") for line in vm)
+
+
 def test_do_loop_with_step_generates_loop_structure():
     source = (
         "      PROGRAM T\n"
@@ -107,6 +124,23 @@ def test_do_loop_with_negative_step_emits_signed_guard():
     assert any(ins.op == "OR" for ins in ir)
 
 
+def test_goto_terminal_do_label_has_vm_label():
+    source = (
+        "      PROGRAM T\n"
+        "      INTEGER I\n"
+        "      DO 10 I = 1, 2\n"
+        "      GOTO 10\n"
+        " 10   CONTINUE\n"
+        "      END\n"
+    )
+
+    _ast, ir, vm = _compile(source)
+
+    assert any(ins.op == "JMP" and ins.result == "lbl10" for ins in ir)
+    assert any(ins.op == "LABEL" and ins.result == "lbl10" for ins in ir)
+    assert any(line == "lbl10:" for line in vm)
+
+
 def test_read_and_print_support_scalar_and_array_element():
     source = (
         "      PROGRAM T\n"
@@ -122,6 +156,23 @@ def test_read_and_print_support_scalar_and_array_element():
     assert any(ins.op == "READ_ARR" for ins in ir)
     assert len([ins for ins in ir if ins.op == "PRINT"]) == 2
     assert vm.count("READ") == 2
+
+
+def test_read_and_write_parenthesized_list_directed_io():
+    source = (
+        "      PROGRAM T\n"
+        "      INTEGER X\n"
+        "      READ (*,*) X\n"
+        "      WRITE (*,*) X\n"
+        "      END\n"
+    )
+
+    _ast, ir, vm = _compile(source)
+
+    assert any(ins.op == "READ" for ins in ir)
+    assert any(ins.op == "PRINT" for ins in ir)
+    assert "READ" in vm
+    assert "WRITEI" in vm
 
 
 def test_read_and_print_emit_type_aware_vm_instructions():
@@ -140,6 +191,23 @@ def test_read_and_print_emit_type_aware_vm_instructions():
     assert "ATOF" in vm
     assert "WRITEF" in vm
     assert "WRITES" in vm
+
+
+def test_real_exponent_literals_character_lengths_and_escaped_strings():
+    source = (
+        "      PROGRAM T\n"
+        "      REAL R\n"
+        "      CHARACTER*12 C\n"
+        "      R = 1D3\n"
+        "      C = 'DON''T'\n"
+        "      PRINT *, R, C\n"
+        "      END\n"
+    )
+
+    _ast, _ir, vm = _compile(source)
+
+    assert any("PUSHF 1000.0" == line for line in vm)
+    assert any('PUSHS "DON\'T"' == line for line in vm)
 
 
 def test_constant_folding_rewrites_pure_numeric_binop():

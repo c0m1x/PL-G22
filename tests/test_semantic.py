@@ -114,3 +114,29 @@ def test_semantic_rejects_non_integer_power_exponent():
 
     with pytest.raises(ValueError, match="Expoente de DSTAR deve ser INTEGER"):
         _analyze(source)
+
+
+def test_semantic_rejects_zero_do_step_literal():
+    source = (
+        "      PROGRAM T\n"
+        "      INTEGER I\n"
+        "      DO 10 I = 1, 3, 0\n"
+        " 10   CONTINUE\n"
+        "      END\n"
+    )
+
+    with pytest.raises(ValueError, match="STEP do DO nao pode ser zero"):
+        _analyze(source)
+
+
+def test_semantic_rejects_duplicate_labels():
+    source = (
+        "      PROGRAM T\n"
+        "      INTEGER X\n"
+        " 10   X = 1\n"
+        " 10   PRINT *, X\n"
+        "      END\n"
+    )
+
+    with pytest.raises(ValueError, match="Label duplicada: 10"):
+        _analyze(source)
