@@ -596,16 +596,22 @@ linearização do corpo do ciclo em TAC e na EWVM.
       PROGRAM FATORIAL
       INTEGER N, I, FAT
       READ *, N
+      IF (N .LE. 0) THEN
+      PRINT *, 'Numero invalido: deve ser positivo'
+      ELSE
       FAT = 1
       DO 10 I = 1, N
       FAT = FAT * I
  10   CONTINUE
       PRINT *, FAT
+      ENDIF
       END
 \end{verbatim}
 
-Neste caso, o backend materializa o ciclo com labels dedicadas, teste de continuação e salto de
-retorno ao início do ciclo, garantindo um comportamento equivalente ao esperado em Fortran 77.
+Neste caso, o backend materializa o \texttt{IF} de validação e o ciclo com labels dedicadas,
+teste de continuação e salto de retorno ao início do ciclo. A validação inicial impede que a
+demonstração aceite valores não positivos para um programa que pede explicitamente um inteiro
+positivo.
 
 \paragraph{Arrays multidimensionais: \texttt{SOMAARR}}
 O programa \texttt{SOMAARR} é útil para demonstrar indexação dinâmica em arrays e o cálculo de
@@ -684,7 +690,7 @@ compilação. Os testes estão organizados pelas seguintes categorias:
 \end{itemize}
 
 Estado de execução no ambiente de desenvolvimento após a iteração final:
-\textbf{92 passed}.
+\textbf{93 passed}.
 
 Os testes de integração com a EWVM, que anteriormente poderiam depender de ligação à máquina
 de referência, correm localmente graças ao módulo \textbf{vm.py}, um interpretador Python do
@@ -831,7 +837,7 @@ parser e semântica), camada intermédia (IR/TAC e otimização) e \textit{backe
 VM) --- melhora a manutenibilidade, facilita a depuração por fases e permite introduzir
 melhorias de forma incremental sem comprometer a estabilidade global do compilador.
 
-Os resultados obtidos na suite de testes (92 passed) demonstram robustez nos casos
+Os resultados obtidos na suite de testes (93 passed) demonstram robustez nos casos
 essenciais do enunciado e nos cenários de valorização, incluindo subprogramas e arrays com
 indexação dinâmica. Em contexto de defesa, isto permite sustentar não apenas que o compilador
 ``funciona'', mas também que as decisões de implementação foram tecnicamente justificadas,

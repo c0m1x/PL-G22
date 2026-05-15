@@ -1,4 +1,5 @@
 import re
+from pathlib import Path
 
 import pytest
 
@@ -40,6 +41,15 @@ def test_ewvm_example_factorial_with_input_3_matches_expected_output():
 
     assert "Introduza um numero inteiro positivo:" in output
     assert re.search(r"Fatorial\s+de\s+3\s*:\s*6", output)
+
+
+def test_ewvm_shipped_factorial_rejects_non_positive_input():
+    source = (Path(__file__).resolve().parents[1] / "examples" / "fatorial.f").read_text()
+
+    output = vm_run(_compile_to_vm(source), input_data="-2\n")
+
+    assert "Numero invalido: deve ser positivo" in output
+    assert "Fatorial de" not in output
 
 
 def test_ewvm_read_then_print_echoes_integer_input():
