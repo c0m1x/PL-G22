@@ -125,6 +125,18 @@ def test_ewvm_example_primo_with_input_7_matches_expected_output():
     assert re.search(r"7\s+e\s+um\s+numero\s+primo", output)
 
 
+def test_ewvm_shipped_primo_rejects_non_positive_and_handles_one():
+    source = (Path(__file__).resolve().parents[1] / "examples" / "primo.f").read_text()
+    vm_code = _compile_to_vm(source)
+
+    negative_output = vm_run(vm_code, input_data="-1\n")
+    one_output = vm_run(vm_code, input_data="1\n")
+
+    assert "Numero invalido: deve ser positivo" in negative_output
+    assert "e um numero primo" not in negative_output
+    assert re.search(r"1\s+nao\s+e\s+um\s+numero\s+primo", one_output)
+
+
 def test_ewvm_example_somaarr_with_inputs_1_to_5_matches_expected_output():
     source = (
         "      PROGRAM SOMAARR\n"
