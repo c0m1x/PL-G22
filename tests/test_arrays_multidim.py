@@ -19,6 +19,21 @@ def test_multidimensional_array_constant_access_codegen():
     assert not any("INSTR NAO SUPORTADA" in line for line in vm)
 
 
+def test_multidimensional_array_offsets_follow_fortran_column_major_order():
+    source = (
+        "      PROGRAM T\n"
+        "      INTEGER A(2,3)\n"
+        "      A(1,2) = 7\n"
+        "      A(2,1) = 9\n"
+        "      END\n"
+    )
+
+    _ast, _ir, vm = _compile(source)
+
+    assert "STOREG 2" in vm  # A(1,2): base + (1 - 1) + (2 - 1) * 2
+    assert "STOREG 1" in vm  # A(2,1): base + (2 - 1)
+
+
 def test_semantic_rejects_wrong_array_rank():
     source = (
         "      PROGRAM T\n"

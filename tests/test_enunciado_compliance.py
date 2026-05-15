@@ -88,3 +88,37 @@ def test_goto_to_existing_label_is_accepted_and_emitted():
     assert any(ins.op == "LABEL" and ins.result == "lbl100" for ins in ir)
     assert any(line == "JUMP lbl100" for line in vm)
     assert any(line == "lbl100:" for line in vm)
+
+
+def test_unindented_spec_style_program_compiles():
+    source = (
+        "PROGRAM HELLO\n"
+        "PRINT *, 'Ola, Mundo!'\n"
+        "END\n"
+    )
+
+    _ast, ir, vm = _compile(source)
+
+    assert any(ins.op == "PRINT" for ins in ir)
+    assert any('PUSHS "Ola, Mundo!"' in line for line in vm)
+
+
+def test_free_form_call_is_not_confused_with_fixed_form_comment():
+    source = (
+        "PROGRAM T\n"
+        "INTEGER X\n"
+        "X = 1\n"
+        "CALL INC(X)\n"
+        "PRINT *, X\n"
+        "END\n"
+        "SUBROUTINE INC(N)\n"
+        "INTEGER N\n"
+        "N = N + 1\n"
+        "RETURN\n"
+        "END\n"
+    )
+
+    _ast, ir, vm = _compile(source)
+
+    assert any(ins.op == "ADD" for ins in ir)
+    assert not any("INSTR NAO SUPORTADA" in line for line in vm)
