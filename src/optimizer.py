@@ -7,6 +7,13 @@ _FOLD_BIN = {
     "DIV": lambda a, b: a / b,
     "POW": lambda a, b: a**b,
     "MOD": lambda a, b: a % b,
+    "GT": lambda a, b: 1 if a > b else 0,
+    "GE": lambda a, b: 1 if a >= b else 0,
+    "LT": lambda a, b: 1 if a < b else 0,
+    "LE": lambda a, b: 1 if a <= b else 0,
+    "EQUAL": lambda a, b: 1 if a == b else 0,
+    "AND": lambda a, b: 1 if (a and b) else 0,
+    "OR": lambda a, b: 1 if (a or b) else 0,
 }
 
 
@@ -336,7 +343,9 @@ def remove_unreachable_code(instrs: list[TACInstr]) -> list[TACInstr]:
 def constant_folding(instrs: list[TACInstr]) -> list[TACInstr]:
     out: list[TACInstr] = []
     for ins in instrs:
-        if ins.op in _FOLD_BIN and _is_num(ins.arg1) and _is_num(ins.arg2):
+        if ins.op == "NOT" and _is_num(ins.arg1):
+            out.append(TACInstr("COPY", ins.result, 0 if ins.arg1 else 1))
+        elif ins.op in _FOLD_BIN and _is_num(ins.arg1) and _is_num(ins.arg2):
             if ins.op in {"DIV", "MOD"} and ins.arg2 == 0:
                 out.append(ins)
                 continue
