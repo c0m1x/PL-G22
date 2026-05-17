@@ -190,3 +190,49 @@ def test_ewvm_example_conversor_with_input_10_matches_expected_output():
     assert re.search(r"BASE\s+2\s*:\s*1010", output)
     assert re.search(r"BASE\s+8\s*:\s*12", output)
     assert re.search(r"BASE\s+9\s*:\s*11", output)
+
+
+def test_real_arithmetic_compiles_and_runs():
+    source = (
+        "      PROGRAM REALTEST\n"
+        "      REAL X, Y\n"
+        "      X = 1.5\n"
+        "      Y = X + 0.5\n"
+        "      PRINT *, Y\n"
+        "      END\n"
+    )
+
+    output = vm_run(_compile_to_vm(source))
+
+    assert "2.0" in output
+
+
+def test_power_operator_produces_correct_result():
+    source = (
+        "      PROGRAM POWTEST\n"
+        "      INTEGER X\n"
+        "      X = 2 ** 8\n"
+        "      PRINT *, X\n"
+        "      END\n"
+    )
+
+    output = vm_run(_compile_to_vm(source))
+
+    assert "256" in output
+
+
+def test_do_loop_with_positive_step_greater_than_one():
+    source = (
+        "      PROGRAM STEPTEST\n"
+        "      INTEGER I, S\n"
+        "      S = 0\n"
+        "      DO 10 I = 0, 10, 2\n"
+        "      S = S + I\n"
+        " 10   CONTINUE\n"
+        "      PRINT *, S\n"
+        "      END\n"
+    )
+
+    output = vm_run(_compile_to_vm(source))
+
+    assert "30" in output
