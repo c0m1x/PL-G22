@@ -348,15 +348,74 @@ def remove_unreachable_code(instrs: list[TACInstr]) -> list[TACInstr]:
 def constant_folding(instrs: list[TACInstr]) -> list[TACInstr]:
     out: list[TACInstr] = []
     for ins in instrs:
+        if ins.op == "NEG" and _is_number_literal(ins.arg1):
+            out.append(TACInstr("COPY", ins.result, -ins.arg1))
+            continue
+
         if ins.op == "NOT" and _is_num(ins.arg1):
-            out.append(TACInstr("COPY", ins.result, 0 if ins.arg1 else 1))
-        elif ins.op in _FOLD_BIN and _is_num(ins.arg1) and _is_num(ins.arg2):
-            if ins.op in {"DIV", "MOD"} and ins.arg2 == 0:
+            # EWVM NOT is defined as (x == 0) ? 1 : 0; in IR we prefer bool to
+            # keep LOGICAL typing stable after folding.
+            out.append(TACInstr("COPY", ins.result, ins.arg1 == 0))
+            continue
+
+        if ins.op in {"AND", "OR"} and _is_num(ins.arg1) and _is_num(ins.arg2):
+            left = ins.arg1 != 0
+            right = ins.arg2 != 0
+            out.append(TACInstr("COPY", ins.result, (left and right) if ins.op == "AND" else (left or right)))
+            continue
+
+        if ins.op == "DIV" and _is_num(ins.arg1) and _is_num(ins.arg2):
+            if ins.arg2 == 0:
                 out.append(ins)
                 continue
-            out.append(TACInstr("COPY", ins.result, _FOLD_BIN[ins.op](ins.arg1, ins.arg2)))
-        else:
+            if isinstance(ins.arg1, float) or isinstance(ins.arg2, float):
+                out.append(TACInstr("COPY", ins.result, ins.arg1 / ins.arg2))
+            else:
+                out.append(TACInstr("COPY", ins.result, int(ins.arg1) // int(ins.arg2)))
+            continue
+
+        if ins.op == "MOD" and _is_num(ins.arg1) and _is_num(ins.arg2):
+            if ins.arg2 == 0:
+                out.append(ins)
+                continue
+            out.append(TACInstr("COPY", ins.result, int(ins.arg1) % int(ins.arg2)))
+            continue
+
+        if ins.op == "POW" and _is_num(ins.arg1) and _is_num(ins.arg2):
+            # Match the runtime semantics implemented in codegen: repeated
+            # multiplication while exponent > 0.
+            base = ins.arg1
+            exp_raw = ins.arg2
+            exp = int(exp_raw) if isinstance(exp_raw, bool) else exp_raw
+
+            if isinstance(exp, (int, float)) and exp <= 0:
+                out.append(TACInstr("COPY", ins.result, 1.0 if isinstance(base, float) else 1))
+                continue
+
+            if isinstance(exp, int) and 0 <= exp <= 64:
+                acc: int | float = 1.0 if isinstance(base, float) else 1
+                for _ in range(exp):
+                    acc *= base
+                out.append(TACInstr("COPY", ins.result, acc))
+                continue
+
             out.append(ins)
+            continue
+
+        # EQ/NE can fold over any non-variable literals (e.g. strings).
+        if ins.op in {"EQ", "NE"} and not isinstance(ins.arg1, str) and not isinstance(ins.arg2, str):
+            out.append(TACInstr("COPY", ins.result, _FOLD_BIN[ins.op](ins.arg1, ins.arg2)))
+            continue
+
+        if ins.op in {"GT", "GE", "LT", "LE"} and _is_num(ins.arg1) and _is_num(ins.arg2):
+            out.append(TACInstr("COPY", ins.result, _FOLD_BIN[ins.op](ins.arg1, ins.arg2)))
+            continue
+
+        if ins.op in {"ADD", "SUB", "MUL"} and _is_number_literal(ins.arg1) and _is_number_literal(ins.arg2):
+            out.append(TACInstr("COPY", ins.result, _FOLD_BIN[ins.op](ins.arg1, ins.arg2)))
+            continue
+
+        out.append(ins)
     return out
 
 
