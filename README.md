@@ -45,13 +45,6 @@ python3 src/main.py <ficheiro.f> [opções]
   --repl          Inicia o REPL interativo
 ```
 
-### Otimizar IR textual
-
-```bash
-python3 src/main.py examples/fatorial.f --dump-ir --no-opt > fatorial.ir
-python3 src/optimize.py fatorial.ir -o fatorial.opt.ir
-```
-
 ### REPL interativo
 
 ```bash
