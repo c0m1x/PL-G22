@@ -80,6 +80,81 @@ def test_optimize_simplifies_power_zero_to_one():
     assert any(ins.op == "COPY" and ins.result == "Y" and ins.arg1 == 1 for ins in out)
 
 
+def test_optimize_constant_folds_integer_division_like_vm():
+    instrs = [
+        TACInstr("DIV", "_t0", 3, 2),
+        TACInstr("COPY", "X", "_t0"),
+    ]
+
+    out = optimize(instrs)
+
+    assert any(ins.op == "COPY" and ins.result == "X" and ins.arg1 == 1 for ins in out)
+
+
+def test_optimize_constant_folds_real_division_like_vm():
+    instrs = [
+        TACInstr("DIV", "_t0", 3.0, 2),
+        TACInstr("COPY", "X", "_t0"),
+    ]
+
+    out = optimize(instrs)
+
+    assert any(ins.op == "COPY" and ins.result == "X" and ins.arg1 == 1.5 for ins in out)
+
+
+def test_optimize_constant_folds_pow_nonpositive_exponent_to_one():
+    instrs = [
+        TACInstr("POW", "_t0", 7, -3),
+        TACInstr("COPY", "X", "_t0"),
+    ]
+
+    out = optimize(instrs)
+
+    assert any(ins.op == "COPY" and ins.result == "X" and ins.arg1 == 1 for ins in out)
+
+
+def test_optimize_constant_folds_and_or_to_bool():
+    instrs = [
+        TACInstr("AND", "_t0", 1, 0),
+        TACInstr("OR", "_t1", 0, 2),
+        TACInstr("COPY", "X", "_t0"),
+        TACInstr("COPY", "Y", "_t1"),
+    ]
+
+    out = optimize(instrs)
+
+    assert any(ins.op == "COPY" and ins.result == "X" and ins.arg1 is False for ins in out)
+    assert any(ins.op == "COPY" and ins.result == "Y" and ins.arg1 is True for ins in out)
+
+
+def test_optimize_constant_folds_mod_like_vm():
+    instrs = [
+        TACInstr("MOD", "_t0", 10, 3),
+        TACInstr("COPY", "X", "_t0"),
+    ]
+
+    out = optimize(instrs)
+
+    assert any(ins.op == "COPY" and ins.result == "X" and ins.arg1 == 1 for ins in out)
+
+
+def test_optimize_constant_folds_not_to_bool():
+    instrs = [
+        TACInstr("NOT", "_t0", 0),
+        TACInstr("NOT", "_t1", 5),
+        TACInstr("NOT", "_t2", True),
+        TACInstr("COPY", "A", "_t0"),
+        TACInstr("COPY", "B", "_t1"),
+        TACInstr("COPY", "C", "_t2"),
+    ]
+
+    out = optimize(instrs)
+
+    assert any(ins.op == "COPY" and ins.result == "A" and ins.arg1 is True for ins in out)
+    assert any(ins.op == "COPY" and ins.result == "B" and ins.arg1 is False for ins in out)
+    assert any(ins.op == "COPY" and ins.result == "C" and ins.arg1 is False for ins in out)
+
+
 def test_optimize_eliminates_dead_overwritten_scalar_store():
     instrs = [
         TACInstr("COPY", "X", 1),
