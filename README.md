@@ -5,8 +5,8 @@
 | Número | Nome |
 |--------|------|
 | a107365 | Beatriz Martins Miranda |
-| a106927 | Tiago José Pereira Martins |
 | a106894 | Francisco Quintas Barros |
+| a106927 | Tiago José Pereira Martins |
 
 ---
 
