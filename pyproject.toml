@@ -1,3 +1,17 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=src --cov-report=term-missing --cov-report=html:htmlcov --cov-fail-under=70"
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["src/parser.out", "src/parsetab.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "if __name__ == .__main__.:",
+    "pragma: no cover",
+]
+
 [tool.black]
 line-length = 120
 target-version = ["py310"]
