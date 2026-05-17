@@ -1,26 +1,20 @@
-# PL-G22
+# Compilador Fortran 77 → EWVM
 
-a106927 - Tiago Jose Pereira Martins  
-a107365 - Beatriz Martins Miranda  
-a106894 - Francisco Quintas Barros
+**Grupo G22 — Processamento de Linguagens 2026**
 
-## Compilador Fortran 77
+| Número | Nome |
+|--------|------|
+| a107365 | Beatriz Martins Miranda |
+| a106927 | Tiago José Pereira Martins |
+| a106894 | Francisco Quintas Barros |
 
-Compilador em Python com pipeline completo:
+---
 
-1. preprocessamento (fixed-form Fortran 77 e formato livre simples)
-2. analise lexica
-3. parsing para AST
-4. analise semantica
-5. geracao de IR (TAC)
-6. otimizacao de IR
-7. geracao de codigo VM
+## Descrição
 
-Projeto de referencia: `PL2026-projeto-plain-nolayout.txt`.
+Compilador para um subconjunto de Fortran 77 com destino à máquina virtual EWVM. Implementado em Python com `ply.lex` e `ply.yacc`, segue uma pipeline completa com representação intermédia (TAC), otimização e geração de código VM.
 
-## Como correr
-
-Instalacao:
+## Instalação
 
 ```bash
 python3 -m venv .venv
@@ -28,148 +22,126 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Compilacao:
+## Utilização
+
+### Compilar um ficheiro Fortran
 
 ```bash
-python3 src/main.py example.f -o out.vm
-python3 src/main.py example.f --dump-ast --dump-ir
+python3 src/main.py examples/fatorial.f -o out.vm
 ```
 
-Testes:
+### Opções disponíveis
+
+```
+python3 src/main.py <ficheiro.f> [opções]
+
+  -o OUTPUT       Ficheiro de saída VM (default: out.vm)
+  --dump-ast      Mostra a AST
+  --dump-ir       Mostra a representação intermédia (TAC)
+  --no-opt        Desativa otimizações
+  --run           Executa na EWVM após compilar
+  --input TEXT    Input para o programa ao usar --run
+  --visualize PATH  Gera PDF da AST (requer graphviz)
+  --repl          Inicia o REPL interativo
+```
+
+### Otimizar IR textual
 
 ```bash
-python3 -m pytest -q
-RUN_EWVM_TESTS=1 python3 -m pytest -q tests/test_ewvm_outputs.py
+python3 src/main.py examples/fatorial.f --dump-ir --no-opt > fatorial.ir
+python3 src/optimize.py fatorial.ir -o fatorial.opt.ir
 ```
 
-Otimização da IR textual:
+### REPL interativo
 
 ```bash
-python3 src/main.py examples/hello.f --dump-ir --no-opt > hello.ir
-python3 src/main.py opt-ir hello.ir -o hello.opt.ir
+python3 src/main.py --repl
 ```
 
-## Formato de entrada
+Modos disponíveis no REPL: `/translate` (default), `/parse`, `/ir`, `/run`, `/visualize`.
 
-O compilador aceita o formato `fixed-form` clássico de Fortran 77:
+## Exemplos
 
-1. colunas 1-5: label opcional;
-2. coluna 6: continuação de linha;
-3. colunas 7-72: código executável/declarativo.
+Os 5 exemplos do enunciado estão em `examples/`:
 
-Tambem aceita um formato livre simples, incluindo programas copiados diretamente do
-enunciado, labels no inicio da linha (`20 IF (...) THEN`) e indentacao leve. Assim,
-tanto `      PRINT *, 'Ola'` como `PRINT *, 'Ola'` sao aceites.
+| Ficheiro | Descrição |
+|----------|-----------|
+| `hello.f` / `hello.vm` | Olá, Mundo! |
+| `fatorial.f` / `fatorial.vm` | Cálculo do fatorial |
+| `primo.f` / `primo.vm` | Verificação de número primo |
+| `somaarr.f` / `somaarr.vm` | Soma de array com READ |
+| `conversor.f` / `conversor.vm` | Conversão de base com FUNCTION |
 
-## Alinhamento com o enunciado (auditoria)
+## Testes
 
-Estado auditado em `15/05/2026`.
+```bash
+# Suite completa com cobertura
+python3 -m pytest
 
-Requisitos minimos para aprovacao (nota base):
+# Sem relatório de cobertura
+python3 -m pytest --no-cov -q
+```
 
-1. Analise lexica com `ply.lex`: `OK`
-2. Analise sintatica com `ply.yacc`: `OK`
-3. Analise semantica (tipos, declaracoes, labels): `OK` (com cobertura de testes)
-4. Traducao para IR e VM: `OK`
-5. Otimizacao sobre IR: `OK`
-6. Suite de testes: `OK`
+Estado atual: **125 testes, 74% cobertura**.
 
-Requisitos tecnicos de linguagem (enunciado):
+## Pipeline de compilação
 
-1. Declaracoes de tipos e variaveis: `OK`
-2. Expressoes aritmeticas, logicas e relacionais: `OK`
-3. IF-THEN-ELSE, DO com label, `GOTO`/`GO TO`: `OK`
-4. I/O basico (`READ`, `PRINT`, `WRITE` list-directed): `OK`
-5. Subprogramas (`FUNCTION`, `SUBROUTINE`, `CALL`) para valorizacao: `OK`
-6. Exponenciacao (`**`) via lowering de `POW` para VM: `OK`
+```
+Fortran 77
+    ↓ preprocessor.py   (fixed-form: colunas 1-5 label, col 6 continuação, 7-72 código)
+Linhas normalizadas
+    ↓ lexer.py          (ply.lex — tokens tipados)
+Tokens
+    ↓ parser.py         (ply.yacc + controlo estrutural por linhas)
+AST
+    ↓ semantic.py       (tipos, declarações, labels, arrays, subprogramas)
+AST anotada
+    ↓ ir_gen.py         (lowering para TAC com inlining de subprogramas)
+TAC (IR)
+    ↓ optimizer.py      (constant folding, copy propagation, dead code elimination, peephole)
+TAC otimizado
+    ↓ codegen.py        (geração de instruções EWVM)
+Código VM
+```
 
-Observacao importante sobre arrays:
+## Funcionalidades suportadas
 
-- Leitura/escrita de elementos de array com indices literais e dinamicos funciona.
-- O backend gera acessos indiretos para casos como `A(I)` e `A(I,J)`.
-- Arrays multidimensionais usam indexacao 1-based e ordem column-major de Fortran.
+**Tipos:** `INTEGER`, `REAL`, `LOGICAL`, `CHARACTER`, `CHARACTER*n`
 
-## Funcionalidades atualmente suportadas
+**Controlo de fluxo:** `IF/THEN/ELSE/ENDIF`, `DO label ... CONTINUE`, `GOTO`, `GO TO`, `STOP`
 
-1. `PROGRAM ... END`
-2. `INTEGER`, `REAL`, `LOGICAL`, `CHARACTER` e `CHARACTER*n`
-3. atribuicoes escalares e de arrays
-4. expressoes com precedencia e associatividade (`+`, `-`, `*`, `/`, `**`, `.EQ.`, `.NE.`, `.LT.`, `.LE.`, `.GT.`, `.GE.`, `.AND.`, `.OR.`, `.NOT.`)
-5. `IF (...) THEN ... [ELSE ...] ENDIF` e `END IF`
-6. `DO label var = start, end [,step] ... label CONTINUE`
-7. `GOTO label`, `GO TO label`, `READ`, `PRINT`, `WRITE`, `STOP`
-8. arrays multidimensionais com validacao semantica de rank/limites
-9. subprogramas externos: `FUNCTION`, `SUBROUTINE`, `CALL`, `RETURN`
-10. I/O tipado e com separadores list-directed no backend VM (`INTEGER/LOGICAL` com `ATOI/WRITEI`, `REAL` com `ATOF/WRITEF`, `CHARACTER` com `WRITES`)
-11. ciclos `DO` com guarda correta para `step` positivo e negativo
-12. funcoes sem argumentos e isolamento de variaveis locais em subprogramas inlinados
-13. literais reais com expoente (`1E3`, `1D3`) e strings com apostrofos duplicados
+**I/O:** `READ`, `PRINT`, `WRITE` (list-directed)
 
-## Arquitetura de modulos
+**Operadores:** `+`, `-`, `*`, `/`, `**`, `.EQ.`, `.NE.`, `.LT.`, `.LE.`, `.GT.`, `.GE.`, `.AND.`, `.OR.`, `.NOT.`
 
-- `src/preprocessor.py`: fixed-form, formato livre simples, labels e continuation
-- `src/lexer.py`: tokenizacao com `ply.lex`
-- `src/parser.py`: parser com `ply.yacc` para expressoes/linhas e controlo estrutural por linhas
-- `src/semantic.py`: verificacao de tipos, declaracoes, labels e arrays
-- `src/ir_gen.py`: AST -> TAC
-- `src/optimizer.py`: `constant folding`, `copy propagation`, `dead temp elimination`, `peephole`
-- `src/codegen.py`: TAC -> VM
-- `src/main.py`: pipeline de ponta a ponta
+**Arrays:** escalares e multidimensionais com índice literal e dinâmico
 
-## Testes e qualidade
+**Subprogramas** *(valorização)*: `FUNCTION`, `SUBROUTINE`, `CALL`, `RETURN` — tratados por inlining com isolamento de variáveis locais
 
-Suite em `tests/` cobre:
+**Formato de entrada:** fixed-form Fortran 77 (colunas 1-72); aceita também formato livre simples
 
-1. preprocessador
-2. semantica (erros e casos positivos)
-3. requisitos do enunciado
-4. arrays multidimensionais
-5. otimizacao
-6. pipeline smoke
-7. regressao de lacunas criticas
-8. subprogramas e indices dinamicos de arrays
+## Otimizações implementadas
 
-Estado atual verificado nesta iteracao: `94 passed`.
+1. *Constant folding* — avalia expressões constantes em tempo de compilação
+2. *Copy propagation* — elimina cópias redundantes entre variáveis
+3. *Dead temporary elimination* — remove temporários cujo valor nunca é usado
+4. *Dead store elimination* — remove escritas sobrescritas antes de serem lidas
+5. *Unreachable code elimination* — remove código após saltos incondicionais
+6. *Peephole* — elimina `x = x` e saltos para a label imediatamente seguinte
 
+## Arquitetura dos módulos
 
-
-## Historico de melhorias (alem da base 10)
-
-Evolucao tecnica resumida por etapas, para demonstrar crescimento incremental do projeto:
-
-1. Base minima (`nota 10`): pipeline funcional com lexer (`ply.lex`), parser, semantica, IR, VM e testes base.
-2. Consolidacao da linguagem: cobertura robusta de expressoes, controlo de fluxo (`IF`, `DO`, `GOTO`) e validacoes semanticas de labels/tipos.
-3. Otimizacao de IR: `constant folding`, `copy propagation`, `dead temp elimination`, `peephole`.
-4. Conformidade tecnica do enunciado: migracao do parser para `ply.yacc`.
-5. Valorizacao funcional: suporte de subprogramas (`FUNCTION`, `SUBROUTINE`, `CALL`, `RETURN`) com validacao semantica e lowering em IR.
-6. Valorizacao de backend: acesso a arrays com indices dinamicos (`A(I)`, `A(I,J)`) no codegen VM usando enderecamento indireto.
-7. Qualidade e regressao: suite expandida com testes dedicados a subprogramas e arrays dinamicos.
-
-Resumo: o projeto ja ultrapassa os requisitos minimos e cobre os principais pontos de valorizacao tecnica previstos no enunciado.
-
-## Lacunas para pontuacao maxima
-
-Com a iteracao atual, os pontos tecnicos criticos identificados foram fechados:
-
-1. parser em `ply.yacc`
-2. subprogramas (`FUNCTION`, `SUBROUTINE`, `CALL`, `RETURN`)
-3. indexacao dinamica de arrays no codegen VM
-4. exponenciacao `**` no backend VM
-5. validacao semantica reforcada de operadores
-6. funcoes sem argumentos
-7. isolamento de variaveis locais durante o inlining
-8. compatibilidade com formato livre dos exemplos do enunciado
-9. `END IF`, `GO TO`, `READ(*,*)` e `WRITE(*,*)`
-10. labels reais no `CONTINUE` terminal de ciclos `DO`
-11. arrays multidimensionais em ordem Fortran
-
-Para robustez extra de defesa/avaliacao, continua recomendado:
-
-1. execucao regular dos testes EWVM com `RUN_EWVM_TESTS=1`
-2. reforco de semantica de argumentos em cenarios avancados de aliasing
-
-## Roadmap tecnico objetivo
-
-1. Fase 1: aumentar cobertura com programas completos do enunciado
-2. Fase 2: endurecer validacoes semanticas de subprogramas
-3. Fase 3: automatizar validacao end-to-end na VM de referencia
+| Módulo | Responsabilidade |
+|--------|-----------------|
+| `preprocessor.py` | Normalização fixed-form, labels, continuação |
+| `lexer.py` | Tokenização com `ply.lex` |
+| `parser.py` | Gramática com `ply.yacc` + blocos estruturais |
+| `semantic.py` | Verificação de tipos, declarações, labels, arrays |
+| `ir_gen.py` | AST → TAC (com inlining de subprogramas) |
+| `optimizer.py` | Passes de otimização sobre TAC |
+| `codegen.py` | TAC → instruções EWVM |
+| `vm.py` | Interpretador local EWVM (para testes sem rede) |
+| `optimize.py` | CLI standalone para otimização de IR textual |
+| `ewvm.py` | Interface HTTP com a EWVM remota |
+| `visualizer.py` | Geração de PDF da AST (Graphviz) |
+| `repl.py` | REPL interativo |
