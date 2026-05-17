@@ -86,4 +86,7 @@ Os 5 exemplos do enunciado estão em `examples/`:
 make test
 ```
 
+Nota: a suite inclui testes property-based e configuração de coverage; as dependências de testes estão incluídas em `requirements.txt` para que `make install`/`make test`
+funcionem num ambiente limpo.
+
 

@@ -1,5 +1,7 @@
 ply
 pytest
+pytest-cov
+hypothesis
 graphviz
 requests
 beautifulsoup4
