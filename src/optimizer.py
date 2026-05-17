@@ -4,21 +4,26 @@ _FOLD_BIN = {
     "ADD": lambda a, b: a + b,
     "SUB": lambda a, b: a - b,
     "MUL": lambda a, b: a * b,
-    "DIV": lambda a, b: a / b,
-    "POW": lambda a, b: a**b,
-    "MOD": lambda a, b: a % b,
-    "GT": lambda a, b: 1 if a > b else 0,
-    "GE": lambda a, b: 1 if a >= b else 0,
-    "LT": lambda a, b: 1 if a < b else 0,
-    "LE": lambda a, b: 1 if a <= b else 0,
-    "EQUAL": lambda a, b: 1 if a == b else 0,
-    "AND": lambda a, b: 1 if (a and b) else 0,
-    "OR": lambda a, b: 1 if (a or b) else 0,
+    "MOD": lambda a, b: int(a) % int(b),
+    "GT": lambda a, b: a > b,
+    "GE": lambda a, b: a >= b,
+    "LT": lambda a, b: a < b,
+    "LE": lambda a, b: a <= b,
+    "EQ": lambda a, b: a == b,
+    "NE": lambda a, b: a != b,
+    # Legacy name kept for backwards compatibility with older dumps.
+    "EQUAL": lambda a, b: a == b,
 }
 
 
 def _is_num(x):
     return isinstance(x, (int, float))
+
+
+def _is_number_literal(x):
+    # Python bool is a subclass of int; for arithmetic folding we only want
+    # genuine numeric literals.
+    return isinstance(x, (int, float)) and not isinstance(x, bool)
 
 
 def _replace_arg(arg, aliases):
