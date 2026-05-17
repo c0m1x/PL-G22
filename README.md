@@ -17,12 +17,27 @@ Compilador para um subconjunto de Fortran 77 com destino à máquina virtual EWV
 ## Instalação
 
 ```bash
+make install
+```
+
+Ou manualmente:
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
 ## Utilização
+
+### Makefile
+
+```bash
+make install   # instalar dependências
+make compile   # compilar todos os exemplos .f → .vm
+make test      # correr a suite de testes
+make all       # install + compile + test
+make clean     # remover ficheiros gerados
+```
 
 ### Compilar um ficheiro Fortran
 
@@ -68,11 +83,7 @@ Os 5 exemplos do enunciado estão em `examples/`:
 ## Testes
 
 ```bash
-# Suite completa com cobertura
-python3 -m pytest
-
-# Sem relatório de cobertura
-python3 -m pytest --no-cov -q
+make test
 ```
 
 
