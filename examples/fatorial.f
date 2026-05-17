@@ -2,7 +2,7 @@
       INTEGER N, I, FAT
       PRINT *, 'Introduza um numero inteiro positivo:'
       READ *, N
-      IF (N .LE. 0) THEN
+      IF (N .LT. 0) THEN
       PRINT *, 'Numero invalido: deve ser positivo'
       ELSE
       FAT = 1
