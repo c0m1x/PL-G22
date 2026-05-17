@@ -402,7 +402,7 @@ def constant_folding(instrs: list[TACInstr]) -> list[TACInstr]:
             out.append(ins)
             continue
 
-        # EQ/NE can fold over any non-variable literals (e.g. strings).
+        # EQ/NE can fold when both operands are literals (i.e. not variables).
         if ins.op in {"EQ", "NE"} and not isinstance(ins.arg1, str) and not isinstance(ins.arg2, str):
             out.append(TACInstr("COPY", ins.result, _FOLD_BIN[ins.op](ins.arg1, ins.arg2)))
             continue
