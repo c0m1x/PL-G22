@@ -82,66 +82,9 @@ python3 -m pytest
 python3 -m pytest --no-cov -q
 ```
 
-Estado atual: **125 testes, 74% cobertura**.
 
-## Pipeline de compilação
 
 ```
-Fortran 77
-    ↓ preprocessor.py   (fixed-form: colunas 1-5 label, col 6 continuação, 7-72 código)
-Linhas normalizadas
-    ↓ lexer.py          (ply.lex — tokens tipados)
-Tokens
-    ↓ parser.py         (ply.yacc + controlo estrutural por linhas)
-AST
-    ↓ semantic.py       (tipos, declarações, labels, arrays, subprogramas)
-AST anotada
-    ↓ ir_gen.py         (lowering para TAC com inlining de subprogramas)
-TAC (IR)
-    ↓ optimizer.py      (constant folding, copy propagation, dead code elimination, peephole)
-TAC otimizado
-    ↓ codegen.py        (geração de instruções EWVM)
-Código VM
-```
 
-## Funcionalidades suportadas
 
-**Tipos:** `INTEGER`, `REAL`, `LOGICAL`, `CHARACTER`, `CHARACTER*n`
 
-**Controlo de fluxo:** `IF/THEN/ELSE/ENDIF`, `DO label ... CONTINUE`, `GOTO`, `GO TO`, `STOP`
-
-**I/O:** `READ`, `PRINT`, `WRITE` (list-directed)
-
-**Operadores:** `+`, `-`, `*`, `/`, `**`, `.EQ.`, `.NE.`, `.LT.`, `.LE.`, `.GT.`, `.GE.`, `.AND.`, `.OR.`, `.NOT.`
-
-**Arrays:** escalares e multidimensionais com índice literal e dinâmico
-
-**Subprogramas** *(valorização)*: `FUNCTION`, `SUBROUTINE`, `CALL`, `RETURN` — tratados por inlining com isolamento de variáveis locais
-
-**Formato de entrada:** fixed-form Fortran 77 (colunas 1-72); aceita também formato livre simples
-
-## Otimizações implementadas
-
-1. *Constant folding* — avalia expressões constantes em tempo de compilação
-2. *Copy propagation* — elimina cópias redundantes entre variáveis
-3. *Dead temporary elimination* — remove temporários cujo valor nunca é usado
-4. *Dead store elimination* — remove escritas sobrescritas antes de serem lidas
-5. *Unreachable code elimination* — remove código após saltos incondicionais
-6. *Peephole* — elimina `x = x` e saltos para a label imediatamente seguinte
-
-## Arquitetura dos módulos
-
-| Módulo | Responsabilidade |
-|--------|-----------------|
-| `preprocessor.py` | Normalização fixed-form, labels, continuação |
-| `lexer.py` | Tokenização com `ply.lex` |
-| `parser.py` | Gramática com `ply.yacc` + blocos estruturais |
-| `semantic.py` | Verificação de tipos, declarações, labels, arrays |
-| `ir_gen.py` | AST → TAC (com inlining de subprogramas) |
-| `optimizer.py` | Passes de otimização sobre TAC |
-| `codegen.py` | TAC → instruções EWVM |
-| `vm.py` | Interpretador local EWVM (para testes sem rede) |
-| `optimize.py` | CLI standalone para otimização de IR textual |
-| `ewvm.py` | Interface HTTP com a EWVM remota |
-| `visualizer.py` | Geração de PDF da AST (Graphviz) |
-| `repl.py` | REPL interativo |
